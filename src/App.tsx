@@ -4,6 +4,7 @@ import { courseData } from './data/courseData';
 import { syncService } from './services/syncService';
 import { themeService, ThemeId, THEMES } from './services/themeService';
 import { Navbar, NavTab } from './components/Navbar';
+import { SplashScreen } from './components/SplashScreen';
 import { Scorecard } from './components/Scorecard';
 import { CaddieMap } from './components/CaddieMap';
 import { RoundSetup } from './components/RoundSetup';
@@ -12,11 +13,13 @@ import { Leaderboard } from './components/Leaderboard';
 import { CourseRules } from './components/CourseRules';
 import { FullScorecardModal } from './components/FullScorecardModal';
 import { ShareRoomModal } from './components/ShareRoomModal';
-import { ShareIcon, BeerIcon } from './components/Icons';
+import { ShareIcon } from './components/Icons';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('scorecard');
   const [round, setRound] = useState<Round | null>(() => syncService.getStoredRound());
+  const [showSetup, setShowSetup] = useState<boolean>(false);
+  const [setupMode, setSetupMode] = useState<'create' | 'join'>('create');
   const [selectedHole, setSelectedHole] = useState<number>(1);
   const [isFullScorecardOpen, setIsFullScorecardOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
@@ -83,6 +86,7 @@ export const App: React.FC = () => {
     const newRound = syncService.createRound(playerNames);
     setRound({ ...newRound });
     setSelectedHole(1);
+    setShowSetup(false);
     setActiveTab('scorecard');
   };
 
@@ -90,6 +94,7 @@ export const App: React.FC = () => {
     const stored = syncService.getStoredRound();
     if (stored && stored.roomCode === roomCode) {
       setRound({ ...stored });
+      setShowSetup(false);
       setActiveTab('scorecard');
       return;
     }
@@ -98,6 +103,7 @@ export const App: React.FC = () => {
     joinedRound.roomCode = roomCode;
     syncService.saveRound(joinedRound);
     setRound({ ...joinedRound });
+    setShowSetup(false);
     setActiveTab('scorecard');
   };
 
@@ -111,6 +117,7 @@ export const App: React.FC = () => {
   const handleNewRound = () => {
     syncService.clearActiveRound();
     setRound(null);
+    setShowSetup(false);
     setActiveTab('scorecard');
   };
 
@@ -122,22 +129,34 @@ export const App: React.FC = () => {
     >
       {/* Top Universal App Header */}
       <header
-        className={`sticky top-0 z-[1200] ${activeThemeConfig.bgClass}/95 backdrop-blur-md border-b ${activeThemeConfig.borderClass} px-4 py-3`}
+        className={`sticky top-0 z-[1200] ${activeThemeConfig.bgClass}/95 backdrop-blur-md border-b ${activeThemeConfig.borderClass} px-4 py-2.5`}
       >
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div
-            onClick={() => setActiveTab(round ? 'scorecard' : 'rules')}
-            className="flex items-center gap-2.5 cursor-pointer select-none"
+            onClick={() => {
+              if (round && round.status === 'in_progress') {
+                setActiveTab('scorecard');
+              } else {
+                setShowSetup(false);
+                setActiveTab('scorecard');
+              }
+            }}
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#10b981] to-[#06b6d4] flex items-center justify-center text-neutral-950 shadow-md">
-              <BeerIcon size={18} />
-            </div>
+            <img
+              src="./course-logo.png"
+              alt="Sore Sacks & Six Packs Logo"
+              className="w-9 h-9 object-contain drop-shadow group-hover:scale-105 transition-transform"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = './course-logo-original.jpg';
+              }}
+            />
             <div>
-              <h1 className="text-sm font-black tracking-tight leading-none">
+              <h1 className="text-sm font-black tracking-tight leading-none text-white">
                 Sore Sacks &amp; Six Packs
               </h1>
               <p className={`text-[10px] ${activeThemeConfig.textSecondary} font-bold leading-none mt-0.5`}>
-                9 Hole • 3 Baskets • Par {courseData.totalPar}
+                Fort Wayne, IN • Par {courseData.totalPar}
               </p>
             </div>
           </div>
@@ -224,9 +243,31 @@ export const App: React.FC = () => {
         <main className="flex-1 max-w-md w-full mx-auto p-3">
           {activeTab === 'scorecard' && (
             <>
-              {!round && (
-                <RoundSetup onStartRound={handleStartRound} onJoinRoom={handleJoinRoom} />
+              {!round && !showSetup && (
+                <SplashScreen
+                  onStartRound={() => {
+                    setSetupMode('create');
+                    setShowSetup(true);
+                  }}
+                  onJoinRound={() => {
+                    setSetupMode('join');
+                    setShowSetup(true);
+                  }}
+                  onOpenMap={() => setActiveTab('map')}
+                  onOpenLeaderboard={() => setActiveTab('leaderboard')}
+                  onOpenRules={() => setActiveTab('rules')}
+                />
               )}
+
+              {!round && showSetup && (
+                <RoundSetup
+                  onStartRound={handleStartRound}
+                  onJoinRoom={handleJoinRoom}
+                  initialTab={setupMode}
+                  onBack={() => setShowSetup(false)}
+                />
+              )}
+
               {round && round.status === 'in_progress' && (
                 <Scorecard
                   round={round}
@@ -237,6 +278,7 @@ export const App: React.FC = () => {
                   onFinishRound={handleFinishRound}
                 />
               )}
+
               {round && round.status === 'completed' && (
                 <RoundSummary
                   round={round}
@@ -272,7 +314,12 @@ export const App: React.FC = () => {
       {/* Bottom Sticky Navigation */}
       <Navbar
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'scorecard' && !round) {
+            setShowSetup(false);
+          }
+        }}
         hasActiveRound={!!round && round.status === 'in_progress'}
       />
     </div>

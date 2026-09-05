@@ -13,7 +13,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
   const navItems = [
     {
       id: 'scorecard' as NavTab,
-      label: hasActiveRound ? 'Scorecard' : 'New Round',
+      label: hasActiveRound ? 'Scorecard' : 'Home',
       icon: DiscIcon
     },
     {
@@ -28,13 +28,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
     },
     {
       id: 'rules' as NavTab,
-      label: 'Course & Lore',
+      label: 'House Lore',
       icon: BeerIcon
     }
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[1500] bg-[#0c1f24]/95 backdrop-blur-xl border-t border-white/10 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-[1500] bg-[#090d16]/95 backdrop-blur-xl border-t border-white/10 pb-safe">
       <div className="max-w-md mx-auto flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
@@ -45,13 +45,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
               onClick={() => onTabChange(item.id)}
               className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all ${
                 isActive
-                  ? 'text-[#ea5826] font-black'
-                  : 'text-[#d1dfdb]/60 hover:text-white font-medium'
+                  ? 'text-emerald-400 font-black'
+                  : 'text-neutral-400 hover:text-white font-medium'
               }`}
             >
               <div
                 className={`p-1 rounded-xl transition-transform ${
-                  isActive ? 'scale-110 bg-[#ea5826]/15' : ''
+                  isActive ? 'scale-110 bg-emerald-500/15' : ''
                 }`}
               >
                 <Icon size={20} />

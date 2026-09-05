@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { courseData } from '../data/courseData';
-import { PlusIcon, CloseIcon, BeerIcon } from './Icons';
+import { PlusIcon, CloseIcon, BeerIcon, ChevronLeftIcon } from './Icons';
 
 interface RoundSetupProps {
   onStartRound: (playerNames: string[]) => void;
   onJoinRoom: (roomCode: string) => void;
+  initialTab?: 'create' | 'join';
+  onBack?: () => void;
 }
 
-export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom }) => {
+export const RoundSetup: React.FC<RoundSetupProps> = ({
+  onStartRound,
+  onJoinRoom,
+  initialTab = 'create',
+  onBack
+}) => {
   const [players, setPlayers] = useState<string[]>(['Charlie C.', 'Player 2']);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [roomCodeInput, setRoomCodeInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'join'>(initialTab);
 
   const handleAddPlayer = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -50,56 +56,52 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
   const quickFriends = ['Chris Wilson', 'Kaleb', 'Chuck', 'Beer Buddy'];
 
   return (
-    <div className="flex flex-col gap-5 max-w-md mx-auto pb-24 animate-fade-in">
-      {/* Course Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#132d34] via-[#193840] to-[#0c1f24] border border-[#ea5826]/30 rounded-3xl p-5 shadow-2xl">
-        <div className="relative z-10 flex flex-col gap-2">
+    <div className="flex flex-col gap-4 max-w-md mx-auto pb-24 animate-fade-in">
+      {/* Top Navigation Bar with Back Button */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold border border-white/10 transition-colors"
+        >
+          <ChevronLeftIcon size={16} />
+          <span>Back to Splash</span>
+        </button>
+      )}
+
+      {/* Course Mini Hero Banner with Crest */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#111827] via-[#0f172a] to-[#090d16] border border-white/10 rounded-3xl p-4 shadow-xl flex items-center gap-4">
+        <img
+          src="./course-logo.png"
+          alt="Sore Sacks & Six Packs Emblem"
+          className="w-20 h-20 object-contain drop-shadow-md flex-shrink-0"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = './course-logo-original.jpg';
+          }}
+        />
+        <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-[#ea5826] text-white text-[10px] font-black uppercase tracking-wider">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase tracking-wider">
               Private Course
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-              Fort Wayne, IN
-            </span>
+            <span className="text-[10px] text-neutral-400 font-bold">Fort Wayne, IN</span>
           </div>
-
-          <h1 className="text-3xl font-black text-[#f6eedb] tracking-tight leading-tight">
+          <h1 className="text-xl font-black text-white tracking-tight leading-tight mt-1">
             Sore Sacks &amp; Six Packs
           </h1>
-
-          <div className="flex items-center gap-4 text-xs font-bold text-[#d1dfdb]/80 mt-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[#ea5826] font-black">9</span> Holes
-            </div>
-            <span>•</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-400 font-black">3</span> Axiom Baskets
-            </div>
-            <span>•</span>
-            <div className="flex items-center gap-1.5">
-              Par <span className="text-[#f4b340] font-black">28</span>
-            </div>
-            <span>•</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-white font-black">2,145</span> ft
-            </div>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-[#d1dfdb]/90">
-            <BeerIcon size={16} className="text-[#f4b340] flex-shrink-0" />
-            <span className="italic">"Don't Be a Loser, DRINK BEER!"</span>
-          </div>
+          <p className="text-[11px] text-neutral-400 font-semibold mt-0.5">
+            9 Holes • 3 Axiom Baskets • Par 28
+          </p>
         </div>
       </div>
 
       {/* Mode Tabs: Create Round vs Join Live Room */}
-      <div className="flex p-1 bg-[#132d34] rounded-2xl border border-white/10">
+      <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10">
         <button
           onClick={() => setActiveTab('create')}
           className={`flex-1 py-2.5 text-xs font-extrabold rounded-xl transition-all ${
             activeTab === 'create'
-              ? 'bg-gradient-to-tr from-[#ea5826] to-[#f4b340] text-white shadow-md'
-              : 'text-[#d1dfdb]/70 hover:text-white'
+              ? 'bg-emerald-500 text-neutral-950 font-black shadow-md'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           Start New Round
@@ -108,8 +110,8 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
           onClick={() => setActiveTab('join')}
           className={`flex-1 py-2.5 text-xs font-extrabold rounded-xl transition-all ${
             activeTab === 'join'
-              ? 'bg-gradient-to-tr from-[#ea5826] to-[#f4b340] text-white shadow-md'
-              : 'text-[#d1dfdb]/70 hover:text-white'
+              ? 'bg-emerald-500 text-neutral-950 font-black shadow-md'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           Join Live Card
@@ -117,10 +119,10 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
       </div>
 
       {activeTab === 'create' ? (
-        <div className="bg-[#132d34] border border-[#f6eedb]/15 rounded-3xl p-5 shadow-xl flex flex-col gap-4">
+        <div className="bg-[#111827] border border-white/10 rounded-3xl p-5 shadow-xl flex flex-col gap-4">
           <div>
-            <h2 className="text-base font-extrabold text-[#f6eedb]">Who's on the Card?</h2>
-            <p className="text-xs text-[#d1dfdb]/70">Add players to track scores together live.</p>
+            <h2 className="text-base font-extrabold text-white">Who's on the Card?</h2>
+            <p className="text-xs text-neutral-400">Add players to track scores together live.</p>
           </div>
 
           {/* Current Players List */}
@@ -128,13 +130,13 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
             {players.map((name, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 rounded-2xl bg-[#0c1f24] border border-white/5 shadow-inner"
+                className="flex items-center justify-between p-3 rounded-2xl bg-[#090d16] border border-white/5 shadow-inner"
               >
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-neutral-800 text-neutral-300 text-xs font-bold flex items-center justify-center">
                     {idx + 1}
                   </span>
-                  <span className="font-bold text-sm text-[#f6eedb]">{name}</span>
+                  <span className="font-bold text-sm text-white">{name}</span>
                 </div>
                 {players.length > 1 && (
                   <button
@@ -157,11 +159,11 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
                 onChange={(e) => setNewPlayerName(e.target.value)}
                 placeholder="Enter player name..."
                 maxLength={20}
-                className="flex-1 bg-[#0c1f24] border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[#ea5826]"
+                className="flex-1 bg-[#090d16] border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
               />
               <button
                 type="submit"
-                className="px-4 py-2.5 rounded-2xl bg-[#193840] hover:bg-[#1f434c] border border-white/10 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
+                className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
               >
                 <PlusIcon size={16} />
                 <span>Add</span>
@@ -180,7 +182,7 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
                 className={`text-xs py-1 px-2.5 rounded-xl border transition-all ${
                   players.includes(friend)
                     ? 'opacity-40 border-transparent text-neutral-600 bg-neutral-900 cursor-not-allowed'
-                    : 'bg-[#193840]/60 hover:bg-[#193840] border-white/10 text-[#d1dfdb]'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-300'
                 }`}
               >
                 + {friend}
@@ -191,16 +193,16 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
           {/* Start Round Button */}
           <button
             onClick={handleStart}
-            className="w-full mt-2 py-4 rounded-2xl bg-gradient-to-tr from-[#ea5826] to-[#f4b340] hover:from-[#f36c3a] hover:to-[#f59e0b] active:scale-98 text-white font-black text-base shadow-xl shadow-[#ea5826]/30 border border-[#ea5826]/50 transition-all flex items-center justify-center gap-2"
+            className="w-full mt-2 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 text-neutral-950 font-black text-base shadow-xl shadow-emerald-950/40 border border-emerald-400 transition-all flex items-center justify-center gap-2"
           >
             <span>Tee Off ({players.length} Player{players.length > 1 ? 's' : ''})</span>
           </button>
         </div>
       ) : (
-        <div className="bg-[#132d34] border border-[#f6eedb]/15 rounded-3xl p-5 shadow-xl flex flex-col gap-4">
+        <div className="bg-[#111827] border border-white/10 rounded-3xl p-5 shadow-xl flex flex-col gap-4">
           <div>
-            <h2 className="text-base font-extrabold text-[#f6eedb]">Join Friend's Card</h2>
-            <p className="text-xs text-[#d1dfdb]/70">
+            <h2 className="text-base font-extrabold text-white">Join Friend's Card</h2>
+            <p className="text-xs text-neutral-400">
               Enter the 4-letter Room Code from your cardmate's phone.
             </p>
           </div>
@@ -212,12 +214,12 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({ onStartRound, onJoinRoom
               onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
               placeholder="e.g. S6P1"
               maxLength={6}
-              className="bg-[#0c1f24] border border-white/15 rounded-2xl px-4 py-3.5 text-center text-2xl font-black text-[#f4b340] tracking-widest placeholder-neutral-600 focus:outline-none focus:border-[#ea5826]"
+              className="bg-[#090d16] border border-white/15 rounded-2xl px-4 py-3.5 text-center text-2xl font-black text-emerald-400 tracking-widest placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
             />
             <button
               type="submit"
               disabled={roomCodeInput.trim().length < 3}
-              className="w-full py-3.5 rounded-2xl bg-[#ea5826] hover:bg-[#f36c3a] disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm shadow-lg shadow-[#ea5826]/20 transition-all"
+              className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-neutral-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all"
             >
               Sync &amp; Join Card
             </button>
