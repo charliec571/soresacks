@@ -6,6 +6,7 @@ import { themeService, ThemeId, THEMES } from './services/themeService';
 import { Navbar, NavTab } from './components/Navbar';
 import { SplashScreen } from './components/SplashScreen';
 import { Scorecard } from './components/Scorecard';
+import { ScorecardMatrixView } from './components/ScorecardMatrixView';
 import { CaddieMap } from './components/CaddieMap';
 import { RoundSetup } from './components/RoundSetup';
 import { RoundSummary } from './components/RoundSummary';
@@ -25,6 +26,25 @@ export const App: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => themeService.getTheme());
   const [showThemeMenu, setShowThemeMenu] = useState<boolean>(false);
+
+  // 1.5-Second App Startup Intro Splash
+  const [showIntroSplash, setShowIntroSplash] = useState<boolean>(true);
+  const [splashFading, setSplashFading] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => {
+      setSplashFading(true);
+    }, 1200);
+
+    const endTimer = setTimeout(() => {
+      setShowIntroSplash(false);
+    }, 1500);
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(endTimer);
+    };
+  }, []);
 
   // Apply theme to document
   useEffect(() => {
@@ -127,6 +147,50 @@ export const App: React.FC = () => {
     <div
       className={`min-h-screen ${activeThemeConfig.bgClass} ${activeThemeConfig.textPrimary} flex flex-col selection:bg-emerald-500 selection:text-black transition-colors duration-200`}
     >
+      {/* 1.5-Second App Startup Splash Screen Overlay */}
+      {showIntroSplash && (
+        <div
+          onClick={() => setShowIntroSplash(false)}
+          className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#090d16] p-6 text-center cursor-pointer transition-opacity duration-300 ${
+            splashFading ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <div className="relative flex flex-col items-center max-w-xs animate-fade-in">
+            {/* Ambient Background Pulse Glow */}
+            <div className="absolute inset-0 rounded-full bg-emerald-500/25 blur-3xl scale-125 pointer-events-none animate-pulse" />
+
+            <img
+              src="./course-logo.png"
+              alt="Sore Sacks & Six Packs"
+              className="relative z-10 w-60 sm:w-72 h-auto object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)]"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = './course-logo-original.jpg';
+              }}
+            />
+
+            <div className="relative z-10 mt-5 flex flex-col items-center gap-1">
+              <h1 className="text-xl font-black tracking-tight text-white">
+                Sore Sacks &amp; Six Packs
+              </h1>
+              <p className="text-xs font-black text-emerald-400 uppercase tracking-widest">
+                Fort Wayne, Indiana • Est. 2026
+              </p>
+            </div>
+
+            {/* 1.5s Animated Progress Line */}
+            <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden mt-6">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                style={{
+                  animation: 'splashProgress 1.5s linear forwards'
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-neutral-500 mt-2 font-medium">Tap anywhere to skip</p>
+          </div>
+        </div>
+      )}
+
       {/* Top Universal App Header */}
       <header
         className={`sticky top-0 z-[1200] ${activeThemeConfig.bgClass}/95 backdrop-blur-md border-b ${activeThemeConfig.borderClass} px-4 py-2.5`}
@@ -289,6 +353,21 @@ export const App: React.FC = () => {
             </>
           )}
 
+          {activeTab === 'matrix' && (
+            <ScorecardMatrixView
+              round={round}
+              onSelectHole={(h) => {
+                handleSelectHole(h);
+                setActiveTab('scorecard');
+              }}
+              onStartRoundClick={() => {
+                setShowSetup(true);
+                setSetupMode('create');
+                setActiveTab('scorecard');
+              }}
+            />
+          )}
+
           {activeTab === 'leaderboard' && <Leaderboard />}
 
           {activeTab === 'rules' && <CourseRules onResetRound={handleNewRound} />}
@@ -311,7 +390,7 @@ export const App: React.FC = () => {
         <ShareRoomModal round={round} onClose={() => setIsShareModalOpen(false)} />
       )}
 
-      {/* Bottom Sticky Navigation */}
+      {/* Bottom Sticky Navigation with 5 tabs */}
       <Navbar
         activeTab={activeTab}
         onTabChange={(tab) => {

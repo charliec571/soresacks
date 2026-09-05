@@ -55,3 +55,9 @@
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 12px);
 }
+
+@keyframes splashProgress {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+

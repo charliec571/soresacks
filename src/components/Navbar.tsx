@@ -1,7 +1,7 @@
 import React from 'react';
-import { DiscIcon, MapPinIcon, TrophyIcon, BeerIcon } from './Icons';
+import { DiscIcon, MapPinIcon, TableIcon, TrophyIcon, BeerIcon } from './Icons';
 
-export type NavTab = 'scorecard' | 'map' | 'leaderboard' | 'rules';
+export type NavTab = 'scorecard' | 'map' | 'matrix' | 'leaderboard' | 'rules';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -13,13 +13,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
   const navItems = [
     {
       id: 'scorecard' as NavTab,
-      label: hasActiveRound ? 'Scorecard' : 'Home',
+      label: hasActiveRound ? 'Card' : 'Home',
       icon: DiscIcon
     },
     {
       id: 'map' as NavTab,
-      label: 'Caddie Map',
+      label: 'Map',
       icon: MapPinIcon
+    },
+    {
+      id: 'matrix' as NavTab,
+      label: 'Matrix',
+      icon: TableIcon
     },
     {
       id: 'leaderboard' as NavTab,
@@ -28,14 +33,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
     },
     {
       id: 'rules' as NavTab,
-      label: 'House Lore',
+      label: 'Lore',
       icon: BeerIcon
     }
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[1500] bg-[#090d16]/95 backdrop-blur-xl border-t border-white/10 pb-safe">
-      <div className="max-w-md mx-auto flex items-center justify-around px-2 py-2">
+      <div className="max-w-md mx-auto flex items-center justify-around px-1 py-1.5">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -43,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all ${
+              className={`flex-1 flex flex-col items-center justify-center py-1 px-0.5 rounded-2xl transition-all ${
                 isActive
                   ? 'text-emerald-400 font-black'
                   : 'text-neutral-400 hover:text-white font-medium'
@@ -54,9 +59,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, hasActiv
                   isActive ? 'scale-110 bg-emerald-500/15' : ''
                 }`}
               >
-                <Icon size={20} />
+                <Icon size={19} />
               </div>
-              <span className="text-[10px] mt-0.5 tracking-tight">{item.label}</span>
+              <span className="text-[10px] mt-0.5 tracking-tight leading-none">{item.label}</span>
             </button>
           );
         })}
