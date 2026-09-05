@@ -1,0 +1,17 @@
+{
+  "name": "Sore Sacks & Six Packs Disc Golf",
+  "short_name": "SoreSacksDG",
+  "description": "Private 9-Hole Disc Golf Caddie Book & Multi-Player Digital Scorecard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c1f24",
+  "theme_color": "#ea5826",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

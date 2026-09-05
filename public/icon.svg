@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#132d34" />
+      <stop offset="100%" stop-color="#08161a" />
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f36c3a" />
+      <stop offset="100%" stop-color="#ea5826" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)" stroke="#ea5826" stroke-width="8" />
+  <!-- Disc Golf Basket Chains & Cage -->
+  <g transform="translate(256, 256) scale(1.1)">
+    <!-- Top Band -->
+    <rect x="-100" y="-110" width="200" height="28" rx="14" fill="url(#orangeGrad)" />
+    <circle cx="0" cy="-110" r="8" fill="#f4b340" />
+    <!-- Center Pole -->
+    <rect x="-8" y="-110" width="16" height="240" rx="6" fill="#d1dfdb" opacity="0.9" />
+    <!-- Chains -->
+    <path d="M-80 -82 L-40 40 M-55 -82 L-25 40 M-30 -82 L-10 40 M30 -82 L10 40 M55 -82 L25 40 M80 -82 L40 40 M0 -82 L0 40" stroke="#f6eedb" stroke-width="6" stroke-linecap="round" opacity="0.85" stroke-dasharray="1 14" />
+    <!-- Basket Cage -->
+    <path d="M-110 40 L-95 105 Q0 125 95 105 L110 40 Z" fill="none" stroke="url(#orangeGrad)" stroke-width="12" stroke-linejoin="round" />
+    <path d="M-110 40 Q0 60 110 40" fill="none" stroke="url(#orangeGrad)" stroke-width="10" />
+    <path d="M-60 48 L-55 110 M-20 54 L-20 114 M20 54 L20 114 M60 48 L55 110" stroke="url(#orangeGrad)" stroke-width="8" />
+  </g>
+  <!-- Flying Disc -->
+  <ellipse cx="360" cy="150" rx="54" ry="18" transform="rotate(-18 360 150)" fill="#f4b340" stroke="#ea5826" stroke-width="5" />
+</svg>
