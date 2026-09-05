@@ -1,17 +1,78 @@
 {
   "name": "Sore Sacks & Six Packs Disc Golf",
-  "short_name": "SoreSacksDG",
-  "description": "Private 9-Hole Disc Golf Caddie Book & Multi-Player Digital Scorecard",
-  "start_url": "/",
+  "short_name": "Sore Sacks",
+  "description": "Private 9-Hole Disc Golf Caddie Book & Scorecard",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0c1f24",
-  "theme_color": "#ea5826",
+  "orientation": "portrait",
+  "background_color": "#090d16",
+  "theme_color": "#10b981",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./course-logo.png",
+      "sizes": "747x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Scorecard",
+      "short_name": "Scorecard",
+      "description": "Log disc golf scores",
+      "url": "./",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Satellite Caddie Map",
+      "short_name": "Map",
+      "description": "View GPS range and baskets",
+      "url": "./",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Scorecard Matrix",
+      "short_name": "Matrix",
+      "description": "Full 9-hole scorecard matrix",
+      "url": "./",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
