@@ -1,5 +1,6 @@
 import { Round, Player, LeaderboardEntry } from '../types';
 import { courseData } from '../data/courseData';
+import { supabase } from './supabaseClient';
 
 const ACTIVE_ROUND_KEY = 'sore_sacks_active_round';
 const COMPLETED_ROUNDS_KEY = 'sore_sacks_completed_rounds';
@@ -49,6 +50,52 @@ try {
   console.warn('BroadcastChannel not supported in this environment');
 }
 
+// Supabase Realtime channel tracker
+let activeSupabaseChannel: any = null;
+
+function subscribeToSupabaseRoom(roomCode: string) {
+  if (!roomCode || typeof window === 'undefined') return;
+
+  if (activeSupabaseChannel) {
+    try {
+      supabase.removeChannel(activeSupabaseChannel);
+    } catch {}
+    activeSupabaseChannel = null;
+  }
+
+  activeSupabaseChannel = supabase
+    .channel(`rounds_${roomCode}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'rounds',
+        filter: `room_code=eq.${roomCode}`
+      },
+      (payload) => {
+        try {
+          const newRow = payload.new as any;
+          if (newRow && newRow.data) {
+            const cloudRound = newRow.data as Round;
+            const local = syncService.getStoredRound();
+
+            // Only apply if newer than local
+            if (!local || (cloudRound.updatedAt || 0) > (local.updatedAt || 0)) {
+              localStorage.setItem(ACTIVE_ROUND_KEY, JSON.stringify(cloudRound));
+              notifyLocal(cloudRound);
+            }
+          }
+        } catch (e) {
+          console.warn('Error handling Supabase realtime payload:', e);
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log(`Supabase Realtime [${roomCode}]:`, status);
+    });
+}
+
 export const syncService = {
   getStoredRound(): Round | null {
     try {
@@ -63,12 +110,38 @@ export const syncService = {
     try {
       round.updatedAt = Date.now();
       localStorage.setItem(ACTIVE_ROUND_KEY, JSON.stringify(round));
-      // Notify current tab listeners immediately!
+
+      // 1. Notify current tab listeners immediately (0ms latency)
       notifyLocal(round);
-      // Notify other tabs/windows
+
+      // 2. Notify other tabs on this device
       if (broadcastChannel) {
         broadcastChannel.postMessage({ type: 'ROUND_UPDATED', round });
       }
+
+      // 3. Ensure Supabase realtime channel is subscribed for this room
+      subscribeToSupabaseRoom(round.roomCode);
+
+      // 4. Asynchronously push to Supabase Cloud
+      supabase
+        .from('rounds')
+        .upsert(
+          {
+            id: round.id,
+            room_code: round.roomCode,
+            data: round,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'id' }
+        )
+        .then(({ error }) => {
+          if (error) {
+            console.warn('Supabase cloud sync warning:', error.message);
+          }
+        })
+        .catch((err) => {
+          console.warn('Supabase network push failed (offline):', err);
+        });
     } catch (e) {
       console.error('Failed to save round to localStorage', e);
     }
@@ -109,6 +182,60 @@ export const syncService = {
 
     this.saveRound(newRound);
     return newRound;
+  },
+
+  async joinRoom(roomCode: string): Promise<Round | null> {
+    const formattedCode = roomCode.trim().toUpperCase();
+
+    // 1. Check local storage first
+    const stored = this.getStoredRound();
+    if (stored && stored.roomCode === formattedCode) {
+      subscribeToSupabaseRoom(formattedCode);
+      return stored;
+    }
+
+    // 2. Fetch from Supabase Cloud
+    try {
+      const { data, error } = await supabase
+        .from('rounds')
+        .select('data')
+        .eq('room_code', formattedCode)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data && data.data) {
+        const cloudRound = data.data as Round;
+        this.saveRound(cloudRound);
+        return cloudRound;
+      }
+    } catch (err) {
+      console.warn('Failed to query Supabase room code:', err);
+    }
+
+    return null;
+  },
+
+  async fetchLatestCloudRound(roomCode: string): Promise<Round | null> {
+    try {
+      const { data, error } = await supabase
+        .from('rounds')
+        .select('data')
+        .eq('room_code', roomCode.toUpperCase())
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data && data.data) {
+        const cloudRound = data.data as Round;
+        const local = this.getStoredRound();
+        if (!local || (cloudRound.updatedAt || 0) > (local.updatedAt || 0)) {
+          this.saveRound(cloudRound);
+          return cloudRound;
+        }
+      }
+    } catch {}
+    return null;
   },
 
   updateScore(playerId: string, holeNumber: number, strokes: number): Round | null {
@@ -193,6 +320,14 @@ export const syncService = {
   },
 
   clearActiveRound(): void {
+    const round = this.getStoredRound();
+    if (round && activeSupabaseChannel) {
+      try {
+        supabase.removeChannel(activeSupabaseChannel);
+      } catch {}
+      activeSupabaseChannel = null;
+    }
+
     localStorage.removeItem(ACTIVE_ROUND_KEY);
     notifyLocal(null);
     if (broadcastChannel) {
@@ -263,10 +398,10 @@ export const syncService = {
   },
 
   subscribe(callback: (round: Round | null) => void): () => void {
-    // Add to local listeners
+    // 1. Add to local listeners
     localListeners.add(callback);
 
-    // Also listen to broadcastChannel for other tabs/devices
+    // 2. Also listen to broadcastChannel for other tabs/windows
     let bcListener: ((event: MessageEvent) => void) | null = null;
     if (broadcastChannel) {
       bcListener = (event: MessageEvent) => {
@@ -277,6 +412,12 @@ export const syncService = {
         }
       };
       broadcastChannel.addEventListener('message', bcListener);
+    }
+
+    // 3. Connect Supabase Realtime if there is an active round
+    const active = this.getStoredRound();
+    if (active && active.roomCode) {
+      subscribeToSupabaseRoom(active.roomCode);
     }
 
     return () => {

@@ -68,9 +68,15 @@ export const App: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
       if (roomParam) {
-        const existing = syncService.getStoredRound();
-        if (existing && existing.roomCode === roomParam) {
-          setRound({ ...existing });
+        syncService.joinRoom(roomParam).then((r) => {
+          if (r) setRound({ ...r });
+        });
+      } else {
+        const active = syncService.getStoredRound();
+        if (active && active.roomCode) {
+          syncService.fetchLatestCloudRound(active.roomCode).then((r) => {
+            if (r) setRound({ ...r });
+          });
         }
       }
     }
@@ -110,10 +116,10 @@ export const App: React.FC = () => {
     setActiveTab('scorecard');
   };
 
-  const handleJoinRoom = (roomCode: string) => {
-    const stored = syncService.getStoredRound();
-    if (stored && stored.roomCode === roomCode) {
-      setRound({ ...stored });
+  const handleJoinRoom = async (roomCode: string) => {
+    const cloudRound = await syncService.joinRoom(roomCode);
+    if (cloudRound) {
+      setRound({ ...cloudRound });
       setShowSetup(false);
       setActiveTab('scorecard');
       return;
