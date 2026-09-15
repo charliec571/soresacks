@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import { courseData } from '../data/courseData';
-import { HoleData, GPSCoord } from '../types';
-import { NavigationIcon, MapPinIcon, InfoIcon } from './Icons';
+import { HoleData, GPSCoord, Round } from '../types';
+import { NavigationIcon, MapPinIcon, InfoIcon, DiscIcon, UsersIcon } from './Icons';
+import { syncService } from '../services/syncService';
 
 interface CaddieMapProps {
   currentHoleNumber: number;
   onSelectHole: (holeNumber: number) => void;
+  round?: Round | null;
+  onOpenThrowTracker?: () => void;
 }
 
 // Haversine formula to compute distance in feet
@@ -25,16 +28,25 @@ function calculateDistanceFt(coord1: GPSCoord, coord2: GPSCoord): number {
   return Math.round(meters * 3.28084);
 }
 
-export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelectHole }) => {
+export const CaddieMap: React.FC<CaddieMapProps> = ({
+  currentHoleNumber,
+  onSelectHole,
+  round,
+  onOpenThrowTracker
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const activeLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const playerLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
 
+  const [viewMode, setViewMode] = useState<'hole' | 'all'>('hole');
   const [userLocation, setUserLocation] = useState<GPSCoord | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [isTrackingGps, setIsTrackingGps] = useState<boolean>(false);
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite');
+
+  const lastBroadcastRef = useRef<number>(0);
 
   const currentHole: HoleData =
     courseData.holes.find((h) => h.number === currentHoleNumber) || courseData.holes[0];
@@ -65,11 +77,6 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       }
     );
 
-    const streetTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 20
-    });
-
     satTiles.addTo(map);
     mapRef.current = map;
 
@@ -81,6 +88,9 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
 
     const activeGroup = L.layerGroup().addTo(map);
     activeLayerGroupRef.current = activeGroup;
+
+    const playerGroup = L.layerGroup().addTo(map);
+    playerLayerGroupRef.current = playerGroup;
 
     return () => {
       map.remove();
@@ -109,7 +119,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
     }
   }, [mapType]);
 
-  // Render course markers and active hole path
+  // Render course markers and flight paths based on viewMode
   const renderCourseLayers = useCallback(() => {
     const map = mapRef.current;
     const activeGroup = activeLayerGroupRef.current;
@@ -117,9 +127,11 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
 
     activeGroup.clearLayers();
 
-    // 1. Draw inactive flight paths dimly for course context
+    const isAllMode = viewMode === 'all';
+
+    // 1. Draw Fairways / Flight Paths
     courseData.holes.forEach((hole) => {
-      if (hole.number === currentHoleNumber) return;
+      const isCurrentHole = hole.number === currentHoleNumber;
 
       const pathCoords: [number, number][] = [
         [hole.tee.lat, hole.tee.lng],
@@ -127,12 +139,55 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
         [hole.basket.lat, hole.basket.lng]
       ];
 
-      L.polyline(pathCoords, {
-        color: '#ffffff',
-        weight: 2,
-        opacity: 0.25,
-        dashArray: '4, 8'
-      }).addTo(activeGroup);
+      if (isCurrentHole) {
+        // Glowing background for active hole
+        L.polyline(pathCoords, {
+          color: '#10b981',
+          weight: 8,
+          opacity: 0.35,
+          lineCap: 'round'
+        }).addTo(activeGroup);
+
+        // Vibrant active fairway line
+        L.polyline(pathCoords, {
+          color: '#34d399',
+          weight: 4,
+          opacity: 0.95,
+          dashArray: '6, 8',
+          lineCap: 'round'
+        }).addTo(activeGroup);
+      } else if (isAllMode) {
+        // In All-Holes mode, render all fairways with subtle color lines
+        L.polyline(pathCoords, {
+          color: '#ffffff',
+          weight: 2.5,
+          opacity: 0.45,
+          dashArray: '5, 7'
+        }).addTo(activeGroup);
+      } else {
+        // In single hole mode, other fairways are very dim
+        L.polyline(pathCoords, {
+          color: '#ffffff',
+          weight: 1.5,
+          opacity: 0.18,
+          dashArray: '4, 8'
+        }).addTo(activeGroup);
+      }
+
+      // Dogleg turns
+      if (isCurrentHole || isAllMode) {
+        hole.doglegs.forEach((dogleg, idx) => {
+          const doglegIcon = L.divIcon({
+            html: `<div class="w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-white shadow-md"></div>`,
+            className: 'dogleg-marker',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+          });
+          L.marker([dogleg.lat, dogleg.lng], { icon: doglegIcon })
+            .bindPopup(`<span class="text-xs font-bold text-neutral-800">Hole ${hole.number} Dogleg ${idx + 1}</span>`)
+            .addTo(activeGroup);
+        });
+      }
     });
 
     // 2. Draw 3 Physical Axiom Lite Baskets
@@ -140,15 +195,15 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       const isCurrentTarget = currentHole.basket.basketNumber === b.basketNumber;
 
       const basketIconHtml = `
-        <div class="relative flex flex-col items-center group cursor-pointer">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-transform ${
+        <div class="relative flex flex-col items-center cursor-pointer group">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-xl transition-all ${
             isCurrentTarget
-              ? 'bg-gradient-to-tr from-emerald-600 to-teal-400 scale-125 ring-4 ring-emerald-400 ring-opacity-70 animate-pulse'
-              : 'bg-emerald-800 bg-opacity-90 border border-emerald-400 border-opacity-40'
+              ? 'bg-gradient-to-tr from-emerald-500 to-teal-400 scale-125 ring-4 ring-emerald-400/80 ring-offset-1 ring-offset-black animate-pulse'
+              : 'bg-emerald-900/90 border-2 border-emerald-400/50'
           }">
             <span class="text-white text-xs font-black">B${b.basketNumber}</span>
           </div>
-          <div class="mt-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white whitespace-nowrap shadow">
+          <div class="mt-1 px-1.5 py-0.5 rounded-md bg-black/85 text-[9px] font-black text-white whitespace-nowrap shadow border border-white/10">
             Basket ${b.basketNumber}
           </div>
         </div>
@@ -157,33 +212,33 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       const customBasketIcon = L.divIcon({
         html: basketIconHtml,
         className: 'custom-basket-marker',
-        iconSize: [36, 48],
+        iconSize: [36, 46],
         iconAnchor: [18, 20]
       });
 
       const marker = L.marker([b.lat, b.lng], { icon: customBasketIcon });
       marker.bindPopup(`
         <div class="p-2 text-neutral-900">
-          <p class="font-bold text-sm text-emerald-800">Basket ${b.basketNumber}</p>
-          <p class="text-xs text-neutral-600 font-semibold">${b.model}</p>
-          <p class="text-xs text-neutral-500 mt-1">Serves Holes: <span class="font-bold text-emerald-700">${b.servesHoles.join(', ')}</span></p>
+          <p class="font-black text-sm text-emerald-800">Basket ${b.basketNumber}</p>
+          <p class="text-xs text-neutral-600 font-bold">${b.model}</p>
+          <p class="text-xs text-neutral-600 mt-1">Serves: <strong class="text-emerald-700">Holes ${b.servesHoles.join(', ')}</strong></p>
         </div>
       `);
       marker.addTo(activeGroup);
     });
 
-    // 3. Draw All Tees (Current tee highlighted)
+    // 3. Draw All Tees (T1 - T9)
     courseData.holes.forEach((hole) => {
       const isCurrentTee = hole.number === currentHoleNumber;
 
       const teeIconHtml = `
         <div class="relative flex flex-col items-center cursor-pointer">
-          <div class="w-7 h-7 rounded-md flex items-center justify-center shadow-lg ${
+          <div class="w-7 h-7 rounded-xl flex items-center justify-center shadow-lg transition-transform ${
             isCurrentTee
-              ? 'bg-gradient-to-tr from-orange-500 to-amber-400 scale-125 ring-4 ring-orange-400 ring-opacity-70 font-black'
-              : 'bg-neutral-800/90 border border-orange-400/40 text-neutral-300'
+              ? 'bg-gradient-to-tr from-amber-400 to-orange-500 scale-125 ring-4 ring-amber-400/80 font-black'
+              : 'bg-[#111827]/90 border border-white/20 text-neutral-300'
           }">
-            <span class="text-white text-[11px] font-bold">T${hole.number}</span>
+            <span class="text-white text-[11px] font-black">T${hole.number}</span>
           </div>
         </div>
       `;
@@ -200,57 +255,85 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       marker.addTo(activeGroup);
     });
 
-    // 4. Draw Active Hole Flight Path (Glowing vibrant line)
-    const activePathCoords: [number, number][] = [
-      [currentHole.tee.lat, currentHole.tee.lng],
-      ...currentHole.doglegs.map((d) => [d.lat, d.lng] as [number, number]),
-      [currentHole.basket.lat, currentHole.basket.lng]
-    ];
-
-    // Background glow
-    L.polyline(activePathCoords, {
-      color: '#ea5826',
-      weight: 8,
-      opacity: 0.35,
-      lineCap: 'round'
-    }).addTo(activeGroup);
-
-    // Primary fairway flight line
-    L.polyline(activePathCoords, {
-      color: '#f4b340',
-      weight: 4,
-      opacity: 0.95,
-      dashArray: '6, 8',
-      lineCap: 'round'
-    }).addTo(activeGroup);
-
-    // Dogleg turn indicator if present
-    currentHole.doglegs.forEach((dogleg, idx) => {
-      const doglegIcon = L.divIcon({
-        html: `<div class="w-4 h-4 rounded-full bg-amber-400 border-2 border-white shadow-md"></div>`,
-        className: 'dogleg-marker',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8]
+    // Fit Bounds depending on viewMode
+    if (isAllMode) {
+      // Fit to entire course property coordinates
+      const allCoords: [number, number][] = [];
+      courseData.holes.forEach((h) => {
+        allCoords.push([h.tee.lat, h.tee.lng]);
+        allCoords.push([h.basket.lat, h.basket.lng]);
       });
-      L.marker([dogleg.lat, dogleg.lng], { icon: doglegIcon })
-        .bindPopup(`<span class="text-xs font-bold text-neutral-800">Dogleg Turn ${idx + 1}</span>`)
-        .addTo(activeGroup);
-    });
-
-    // Fit bounds to show current tee and basket
-    const bounds = L.latLngBounds(activePathCoords);
-    map.fitBounds(bounds, {
-      padding: [60, 60],
-      maxZoom: 19,
-      animate: true
-    });
-  }, [currentHoleNumber, currentHole, onSelectHole]);
+      map.fitBounds(L.latLngBounds(allCoords), {
+        padding: [50, 50],
+        maxZoom: 18,
+        animate: true
+      });
+    } else {
+      // Fit to active hole
+      const activePathCoords: [number, number][] = [
+        [currentHole.tee.lat, currentHole.tee.lng],
+        ...currentHole.doglegs.map((d) => [d.lat, d.lng] as [number, number]),
+        [currentHole.basket.lat, currentHole.basket.lng]
+      ];
+      map.fitBounds(L.latLngBounds(activePathCoords), {
+        padding: [65, 65],
+        maxZoom: 19,
+        animate: true
+      });
+    }
+  }, [currentHoleNumber, currentHole, viewMode, onSelectHole]);
 
   useEffect(() => {
     renderCourseLayers();
   }, [renderCourseLayers]);
 
-  // GPS Rangefinder Tracking
+  // Render multi-player live GPS locations from round
+  const renderPlayerMarkers = useCallback(() => {
+    const playerGroup = playerLayerGroupRef.current;
+    if (!playerGroup || !round) return;
+
+    playerGroup.clearLayers();
+
+    round.players.forEach((p) => {
+      // If player has a location reported within the last 30 minutes
+      if (p.location && p.location.lat && p.location.lng) {
+        const initials = p.name.substring(0, 2).toUpperCase();
+
+        const playerIconHtml = `
+          <div class="relative flex flex-col items-center">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shadow-xl border-2 border-white ring-2 ring-black/40 animate-pulse" style="background-color: ${p.color};">
+              ${initials}
+            </div>
+            <div class="mt-1 px-1.5 py-0.5 rounded bg-black/90 border border-white/15 text-[9px] font-black text-white whitespace-nowrap shadow">
+              ${p.name}
+            </div>
+          </div>
+        `;
+
+        const playerIcon = L.divIcon({
+          html: playerIconHtml,
+          className: 'player-gps-marker',
+          iconSize: [36, 48],
+          iconAnchor: [18, 20]
+        });
+
+        L.marker([p.location.lat, p.location.lng], { icon: playerIcon })
+          .bindPopup(`
+            <div class="p-1.5 text-xs text-neutral-900">
+              <p class="font-black text-sm" style="color: ${p.color};">${p.name}</p>
+              <p class="text-neutral-600 mt-0.5">Live on course</p>
+            </div>
+          `)
+          .addTo(playerGroup);
+      }
+    });
+  }, [round]);
+
+  useEffect(() => {
+    renderPlayerMarkers();
+  }, [renderPlayerMarkers]);
+
+  // GPS Rangefinder Tracking & Broadcast
   const toggleGps = () => {
     if (isTrackingGps) {
       setIsTrackingGps(false);
@@ -273,6 +356,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
         };
         setUserLocation(userCoord);
 
+        // Update local user marker
         if (mapRef.current) {
           if (!userMarkerRef.current) {
             const userIcon = L.divIcon({
@@ -293,10 +377,25 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
             userMarkerRef.current.setLatLng([userCoord.lat, userCoord.lng]);
           }
         }
+
+        // Broadcast user's location to the group every 5 seconds
+        const now = Date.now();
+        if (round && round.players.length > 0 && now - lastBroadcastRef.current > 5000) {
+          lastBroadcastRef.current = now;
+          const myPlayer = round.players[0];
+          if (myPlayer) {
+            syncService.updatePlayerLocation(
+              myPlayer.id,
+              userCoord.lat,
+              userCoord.lng,
+              Math.round(pos.coords.accuracy * 3.28084)
+            );
+          }
+        }
       },
       (err) => {
         console.warn('GPS error:', err);
-        setGpsError('Could not acquire GPS position. Check permissions.');
+        setGpsError('Could not acquire GPS position. Check browser permissions.');
         setIsTrackingGps(false);
       },
       {
@@ -311,7 +410,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
     };
   };
 
-  const centerOnHole = () => {
+  const centerOnCurrentHole = () => {
     if (!mapRef.current) return;
     const activePathCoords: [number, number][] = [
       [currentHole.tee.lat, currentHole.tee.lng],
@@ -319,8 +418,21 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       [currentHole.basket.lat, currentHole.basket.lng]
     ];
     mapRef.current.fitBounds(L.latLngBounds(activePathCoords), {
-      padding: [60, 60],
+      padding: [65, 65],
       maxZoom: 19
+    });
+  };
+
+  const centerOnCourse = () => {
+    if (!mapRef.current) return;
+    const allCoords: [number, number][] = [];
+    courseData.holes.forEach((h) => {
+      allCoords.push([h.tee.lat, h.tee.lng]);
+      allCoords.push([h.basket.lat, h.basket.lng]);
+    });
+    mapRef.current.fitBounds(L.latLngBounds(allCoords), {
+      padding: [50, 50],
+      maxZoom: 18
     });
   };
 
@@ -332,52 +444,112 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
   return (
     <div
       style={{ height: 'calc(100dvh - 112px)' }}
-      className="relative w-full flex flex-col bg-[#0c1f24] overflow-hidden"
+      className="relative w-full flex flex-col bg-[#090d16] overflow-hidden"
     >
-      {/* Top Rangefinder & Hole Info Bar */}
+      {/* Top Rangefinder & View Switcher Bar */}
       <div className="absolute top-3 left-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-none">
-        <div className="bg-[#132d34]/95 backdrop-blur-md border border-[#f6eedb]/15 rounded-2xl p-3 shadow-2xl flex items-center justify-between pointer-events-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#ea5826] to-[#f4b340] flex flex-col items-center justify-center text-white shadow-md">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider leading-none">Hole</span>
-              <span className="text-xl font-black leading-tight">{currentHole.number}</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-black text-[#f6eedb]">Par {currentHole.par}</span>
-                <span className="px-2 py-0.5 rounded-full bg-[#ea5826]/20 text-[#ea5826] text-xs font-bold border border-[#ea5826]/30">
-                  {currentHole.distanceFt} ft
+        <div className="bg-[#111827]/95 backdrop-blur-md border border-white/15 rounded-3xl p-3 shadow-2xl flex flex-col gap-2.5 pointer-events-auto">
+          {/* Main Info Row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex flex-col items-center justify-center text-neutral-950 shadow-md">
+                <span className="text-[10px] font-black uppercase tracking-wider leading-none">
+                  Hole
                 </span>
-                {currentHole.isSafari && (
-                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30">
-                    Safari
-                  </span>
-                )}
+                <span className="text-xl font-black leading-tight">
+                  {currentHole.number}
+                </span>
               </div>
-              <p className="text-xs text-[#d1dfdb]/80 flex items-center gap-1 mt-0.5">
-                Target: <span className="text-emerald-400 font-semibold">{currentHole.basket.name}</span>
-                <span className="text-[10px] text-neutral-400">({currentHole.basket.color})</span>
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black text-white">Par {currentHole.par}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-black border border-emerald-500/30">
+                    {currentHole.distanceFt} ft
+                  </span>
+                  {currentHole.isSafari && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-black border border-purple-500/30">
+                      Safari
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
+                  Target:{' '}
+                  <strong className="text-emerald-400 font-bold">
+                    Basket {currentHole.basket.basketNumber}
+                  </strong>
+                  <span className="text-[10px] text-neutral-500">({currentHole.basket.color})</span>
+                </p>
+              </div>
+            </div>
+
+            {/* GPS Rangefinder / Live Pin Distance */}
+            <div className="flex flex-col items-end">
+              {distanceToBasket !== null ? (
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-black text-neutral-400 tracking-wider">
+                    To Pin
+                  </span>
+                  <div className="text-xl font-black text-emerald-400 flex items-center gap-1">
+                    <NavigationIcon size={16} className="text-emerald-400 animate-pulse" />
+                    <span>{distanceToBasket} ft</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={toggleGps}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-xs font-black flex items-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <NavigationIcon size={14} />
+                  <span>GPS Range</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* GPS Rangefinder Badge */}
-          <div className="flex flex-col items-end">
-            {distanceToBasket !== null ? (
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">To Pin</span>
-                <div className="text-xl font-black text-[#5cc2d3] flex items-center gap-1">
-                  <NavigationIcon size={16} className="text-[#5cc2d3] animate-pulse" />
-                  <span>{distanceToBasket} ft</span>
-                </div>
-              </div>
-            ) : (
+          {/* Quick Actions & Map View Mode Selector */}
+          <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+            {/* View Mode Toggle */}
+            <div className="flex-1 flex p-1 bg-white/5 rounded-xl border border-white/5">
               <button
-                onClick={toggleGps}
-                className="px-3 py-1.5 rounded-xl bg-[#5cc2d3]/20 hover:bg-[#5cc2d3]/30 border border-[#5cc2d3]/40 text-[#5cc2d3] text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                onClick={() => {
+                  setViewMode('hole');
+                  centerOnCurrentHole();
+                }}
+                className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all ${
+                  viewMode === 'hole'
+                    ? 'bg-emerald-500 text-neutral-950 shadow'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
               >
-                <NavigationIcon size={14} />
-                <span>GPS Range</span>
+                Hole {currentHole.number} View
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('all');
+                  centerOnCourse();
+                }}
+                className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1 ${
+                  viewMode === 'all'
+                    ? 'bg-emerald-500 text-neutral-950 shadow'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <span>All Holes</span>
+                {round && round.players.some((p) => p.location) && (
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                )}
+              </button>
+            </div>
+
+            {/* Measure Drive Button */}
+            {onOpenThrowTracker && (
+              <button
+                onClick={onOpenThrowTracker}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-neutral-950 font-black text-xs flex items-center gap-1.5 shadow transition-transform active:scale-95"
+                title="Measure Drive Distance"
+              >
+                <DiscIcon size={15} />
+                <span>Measure Drive</span>
               </button>
             )}
           </div>
@@ -397,12 +569,12 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       {/* Map Canvas */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-      {/* Map Action Floating Controls */}
+      {/* Map Floating Actions */}
       <div className="absolute right-3 bottom-24 z-[1000] flex flex-col gap-2">
         <button
           onClick={() => setMapType(mapType === 'satellite' ? 'street' : 'satellite')}
           title="Toggle Satellite / Street Map"
-          className="w-10 h-10 rounded-xl bg-[#132d34]/90 hover:bg-[#193840] border border-[#f6eedb]/20 text-[#f6eedb] flex items-center justify-center shadow-lg transition-transform active:scale-95"
+          className="w-10 h-10 rounded-xl bg-[#111827]/90 hover:bg-[#1f2937] border border-white/20 text-white flex items-center justify-center shadow-lg transition-transform active:scale-95"
         >
           <span className="text-[10px] font-black uppercase tracking-tight">
             {mapType === 'satellite' ? 'SAT' : 'MAP'}
@@ -410,9 +582,9 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
         </button>
 
         <button
-          onClick={centerOnHole}
-          title="Recenter on Current Hole"
-          className="w-10 h-10 rounded-xl bg-[#132d34]/90 hover:bg-[#193840] border border-[#f6eedb]/20 text-[#ea5826] flex items-center justify-center shadow-lg transition-transform active:scale-95"
+          onClick={viewMode === 'all' ? centerOnCourse : centerOnCurrentHole}
+          title="Recenter Map"
+          className="w-10 h-10 rounded-xl bg-[#111827]/90 hover:bg-[#1f2937] border border-white/20 text-emerald-400 flex items-center justify-center shadow-lg transition-transform active:scale-95"
         >
           <MapPinIcon size={18} />
         </button>
@@ -422,8 +594,8 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
           title={isTrackingGps ? 'GPS Tracking Active' : 'Start GPS Tracking'}
           className={`w-10 h-10 rounded-xl border flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
             isTrackingGps
-              ? 'bg-[#5cc2d3] text-neutral-900 border-[#5cc2d3]'
-              : 'bg-[#132d34]/90 text-[#d1dfdb] border-[#f6eedb]/20'
+              ? 'bg-emerald-500 text-neutral-950 border-emerald-400 font-bold'
+              : 'bg-[#111827]/90 text-neutral-300 border-white/20'
           }`}
         >
           <NavigationIcon size={18} />
@@ -441,7 +613,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
       </div>
 
       {/* Bottom Hole Selector Carousel */}
-      <div className="absolute bottom-2 left-2 right-2 z-[1000] bg-[#132d34]/95 backdrop-blur-md border border-[#f6eedb]/15 rounded-2xl p-2 shadow-2xl">
+      <div className="absolute bottom-2 left-2 right-2 z-[1000] bg-[#111827]/95 backdrop-blur-md border border-white/15 rounded-2xl p-2 shadow-2xl">
         <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar pb-1">
           {courseData.holes.map((h) => {
             const isSelected = h.number === currentHoleNumber;
@@ -451,8 +623,8 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
                 onClick={() => onSelectHole(h.number)}
                 className={`flex-1 min-w-[58px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center transition-all ${
                   isSelected
-                    ? 'bg-gradient-to-tr from-[#ea5826] to-[#f4b340] text-white font-extrabold shadow-lg scale-105 ring-2 ring-[#ea5826]/50'
-                    : 'bg-[#0c1f24]/70 hover:bg-[#193840] text-[#d1dfdb] border border-white/5'
+                    ? 'bg-emerald-500 text-neutral-950 font-black shadow-lg scale-105 ring-2 ring-emerald-400/50'
+                    : 'bg-[#090d16] hover:bg-white/5 text-neutral-300 border border-white/5'
                 }`}
               >
                 <span className="text-xs font-black leading-none">H{h.number}</span>
@@ -465,12 +637,12 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({ currentHoleNumber, onSelec
         </div>
 
         {/* Hole Notes Subtitle */}
-        <div className="mt-1.5 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px] text-[#d1dfdb]/90 px-1">
+        <div className="mt-1.5 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px] text-neutral-300 px-1">
           <div className="truncate flex items-center gap-1.5">
-            <InfoIcon size={13} className="text-[#f4b340] flex-shrink-0" />
+            <InfoIcon size={13} className="text-amber-400 flex-shrink-0" />
             <span className="truncate">{currentHole.notes}</span>
           </div>
-          <span className="flex-shrink-0 font-bold text-[#f4b340] ml-2">
+          <span className="flex-shrink-0 font-bold text-amber-400 ml-2">
             Axiom Lite (B{currentHole.basket.basketNumber})
           </span>
         </div>

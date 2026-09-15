@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Round } from './types';
+import { Round, SkinsConfig, MeasuredThrow } from './types';
 import { courseData } from './data/courseData';
 import { syncService } from './services/syncService';
 import { themeService, ThemeId, THEMES } from './services/themeService';
@@ -14,6 +14,8 @@ import { Leaderboard } from './components/Leaderboard';
 import { CourseRules } from './components/CourseRules';
 import { FullScorecardModal } from './components/FullScorecardModal';
 import { ShareRoomModal } from './components/ShareRoomModal';
+import { SkinsModal } from './components/SkinsModal';
+import { ThrowTrackerModal } from './components/ThrowTrackerModal';
 import { ShareIcon } from './components/Icons';
 
 export const App: React.FC = () => {
@@ -24,6 +26,8 @@ export const App: React.FC = () => {
   const [selectedHole, setSelectedHole] = useState<number>(1);
   const [isFullScorecardOpen, setIsFullScorecardOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [isSkinsModalOpen, setIsSkinsModalOpen] = useState<boolean>(false);
+  const [isThrowTrackerOpen, setIsThrowTrackerOpen] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => themeService.getTheme());
   const [showThemeMenu, setShowThemeMenu] = useState<boolean>(false);
 
@@ -145,6 +149,27 @@ export const App: React.FC = () => {
     setRound(null);
     setShowSetup(false);
     setActiveTab('scorecard');
+  };
+
+  const handleMarkCtp = (holeNumber: number, playerId: string, distanceInches?: number) => {
+    const updated = syncService.markCtp(holeNumber, playerId, distanceInches);
+    if (updated) {
+      setRound({ ...updated });
+    }
+  };
+
+  const handleUpdateSkinsConfig = (config: SkinsConfig) => {
+    const updated = syncService.updateSkinsConfig(config);
+    if (updated) {
+      setRound({ ...updated });
+    }
+  };
+
+  const handleSaveThrow = (measuredThrow: MeasuredThrow) => {
+    const updated = syncService.saveMeasuredThrow(measuredThrow);
+    if (updated) {
+      setRound({ ...updated });
+    }
   };
 
   const activeThemeConfig = THEMES[currentTheme] || THEMES.midnight;
@@ -307,7 +332,12 @@ export const App: React.FC = () => {
       {/* Main View — map gets full-bleed, everything else is padded */}
       {activeTab === 'map' ? (
         <div className="flex-1 w-full overflow-hidden">
-          <CaddieMap currentHoleNumber={selectedHole} onSelectHole={handleSelectHole} />
+          <CaddieMap
+            currentHoleNumber={selectedHole}
+            onSelectHole={handleSelectHole}
+            round={round}
+            onOpenThrowTracker={() => setIsThrowTrackerOpen(true)}
+          />
         </div>
       ) : (
         <main className="flex-1 max-w-md w-full mx-auto p-3">
@@ -346,6 +376,9 @@ export const App: React.FC = () => {
                   onOpenMap={() => setActiveTab('map')}
                   onOpenFullScorecard={() => setIsFullScorecardOpen(true)}
                   onFinishRound={handleFinishRound}
+                  onOpenSkinsModal={() => setIsSkinsModalOpen(true)}
+                  onOpenThrowTracker={() => setIsThrowTrackerOpen(true)}
+                  onMarkCtp={handleMarkCtp}
                 />
               )}
 
@@ -396,7 +429,25 @@ export const App: React.FC = () => {
         <ShareRoomModal round={round} onClose={() => setIsShareModalOpen(false)} />
       )}
 
-      {/* Bottom Sticky Navigation with 5 tabs */}
+      {isSkinsModalOpen && round && (
+        <SkinsModal
+          round={round}
+          onClose={() => setIsSkinsModalOpen(false)}
+          onUpdateSkinsConfig={handleUpdateSkinsConfig}
+          onMarkCtp={handleMarkCtp}
+        />
+      )}
+
+      {isThrowTrackerOpen && round && (
+        <ThrowTrackerModal
+          round={round}
+          currentHoleNumber={selectedHole}
+          onClose={() => setIsThrowTrackerOpen(false)}
+          onSaveThrow={handleSaveThrow}
+        />
+      )}
+
+      {/* Bottom Sticky Navigation */}
       <Navbar
         activeTab={activeTab}
         onTabChange={(tab) => {

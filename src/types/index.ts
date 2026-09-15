@@ -62,6 +62,25 @@ export interface PlayerScore {
   penalties?: number;
 }
 
+export interface PlayerLocation {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  updatedAt: number;
+}
+
+export interface MeasuredThrow {
+  id: string;
+  playerId: string;
+  playerName: string;
+  holeNumber: number;
+  distanceFt: number;
+  discName?: string;
+  startCoord: GPSCoord;
+  endCoord: GPSCoord;
+  createdAt: number;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -70,6 +89,33 @@ export interface Player {
   scores: Record<number, number>; // holeNumber -> strokes
   putts?: Record<number, number>;
   penalties?: Record<number, number>;
+  location?: PlayerLocation;
+  throws?: MeasuredThrow[];
+}
+
+export interface SkinsConfig {
+  enabled: boolean;
+  stakeType: 'cash' | 'beer' | 'bragging';
+  stakeAmount: number; // e.g. $1 or 1 beer
+  carryovers: boolean;
+}
+
+export interface SkinResult {
+  holeNumber: number;
+  winnerPlayerId: string | null;
+  winnerName: string | null;
+  tiedPlayerIds: string[];
+  skinsValue: number;
+  isCarryover: boolean;
+}
+
+export interface CtpWinner {
+  holeNumber: number;
+  playerId: string;
+  playerName: string;
+  distanceInches?: number;
+  note?: string;
+  markedAt: number;
 }
 
 export interface Round {
@@ -83,6 +129,9 @@ export interface Round {
   currentHole: number;
   status: 'in_progress' | 'completed';
   updatedAt: number;
+  skinsConfig?: SkinsConfig;
+  ctpWinners?: Record<number, CtpWinner>; // holeNumber -> CtpWinner
+  measuredThrows?: MeasuredThrow[];
 }
 
 export interface LeaderboardEntry {

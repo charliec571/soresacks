@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Round } from '../types';
 import { courseData } from '../data/courseData';
-import { TrophyIcon, ShareIcon, CheckIcon, BeerIcon } from './Icons';
+import { calculateSkins } from '../utils/skins';
+import { TrophyIcon, ShareIcon, CheckIcon, BeerIcon, DiscIcon } from './Icons';
 
 interface RoundSummaryProps {
   round: Round;
@@ -16,7 +17,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  // Compute final player rankings
+  // Compute final player stroke rankings
   const rankedPlayers = round.players
     .map((p) => {
       let total = 0;
@@ -47,11 +48,26 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
     })
     .sort((a, b) => a.total - b.total);
 
-  const winner = rankedPlayers[0];
+  const strokeWinner = rankedPlayers[0];
+
+  // Calculate Skins Game
+  const skinsData = calculateSkins(round);
+  const skinsLeader = skinsData.playerSummaries[0];
+
+  // Calculate CTP Winners
+  const ctpList = Object.values(round.ctpWinners || {});
+
+  // Find longest drive
+  const allThrows = round.measuredThrows || [];
+  const longestDrive =
+    allThrows.length > 0
+      ? [...allThrows].sort((a, b) => b.distanceFt - a.distanceFt)[0]
+      : null;
 
   const handleCopySummary = () => {
-    let text = `🍻 Sore Sacks & Six Packs - Round Complete!\n`;
+    let text = `🍻 Sore Sacks & Six Packs - Round Recap!\n`;
     text += `📅 ${round.date} • Par ${courseData.totalPar}\n\n`;
+    text += `🏆 STROKE PLAY STANDINGS:\n`;
 
     const medals = ['🥇', '🥈', '🥉', '4th', '5th', '6th', '7th', '8th'];
     rankedPlayers.forEach((item, idx) => {
@@ -66,6 +82,23 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
       text += `\n`;
     });
 
+    if (skinsLeader && skinsLeader.skinsWon > 0) {
+      text += `\n💰 SKINS CHAMPION:\n`;
+      text += `👑 ${skinsLeader.playerName}: ${skinsLeader.skinsWon} Skins (${skinsLeader.payoutText})\n`;
+    }
+
+    if (ctpList.length > 0) {
+      text += `\n🎯 CTP HONORS:\n`;
+      ctpList.forEach((c) => {
+        text += `• Hole ${c.holeNumber}: ${c.playerName}\n`;
+      });
+    }
+
+    if (longestDrive) {
+      text += `\n🚀 LONGEST DRIVE:\n`;
+      text += `• ${longestDrive.playerName}: ${longestDrive.distanceFt} ft (Hole ${longestDrive.holeNumber}${longestDrive.discName ? ` w/ ${longestDrive.discName}` : ''})\n`;
+    }
+
     text += `\nPrivate 9-hole layout • 3 Axiom Baskets • Fort Wayne, IN`;
 
     navigator.clipboard.writeText(text).then(() => {
@@ -75,10 +108,10 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-5 max-w-md mx-auto pb-24 animate-fade-in">
-      {/* Celebration Card */}
-      <div className="bg-gradient-to-b from-[#193840] to-[#132d34] border border-[#f4b340]/40 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
-        <div className="w-16 h-16 mx-auto rounded-full bg-amber-400/20 border border-amber-400 flex items-center justify-center text-amber-300 mb-3 shadow-lg shadow-amber-400/20">
+    <div className="flex flex-col gap-4 max-w-md mx-auto pb-28 pt-1 animate-fade-in">
+      {/* Champion Celebration Card */}
+      <div className="bg-gradient-to-b from-[#111827] via-[#0f172a] to-[#090d16] border border-amber-400/40 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
+        <div className="w-16 h-16 mx-auto rounded-full bg-amber-400/20 border border-amber-400 flex items-center justify-center text-amber-300 mb-2.5 shadow-lg shadow-amber-400/20">
           <TrophyIcon size={32} />
         </div>
 
@@ -86,43 +119,94 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
           Round Champion
         </span>
 
-        <h1 className="text-3xl font-black text-[#f6eedb] mt-2">{winner.player.name}</h1>
+        <h1 className="text-3xl font-black text-white mt-2">{strokeWinner.player.name}</h1>
 
-        <div className="flex items-center justify-center gap-3 mt-2 text-base font-extrabold">
-          <span className="text-white text-2xl">{winner.total} Strokes</span>
+        <div className="flex items-center justify-center gap-3 mt-1.5 text-base font-extrabold">
+          <span className="text-white text-2xl">{strokeWinner.total} Strokes</span>
           <span className="text-neutral-500">•</span>
           <span
             className={`text-2xl font-black ${
-              winner.scoreToPar < 0
-                ? 'text-blue-400'
-                : winner.scoreToPar === 0
+              strokeWinner.scoreToPar < 0
+                ? 'text-emerald-400'
+                : strokeWinner.scoreToPar === 0
                 ? 'text-neutral-300'
                 : 'text-orange-400'
             }`}
           >
-            {winner.scoreToPar > 0
-              ? `+${winner.scoreToPar}`
-              : winner.scoreToPar === 0
+            {strokeWinner.scoreToPar > 0
+              ? `+${strokeWinner.scoreToPar}`
+              : strokeWinner.scoreToPar === 0
               ? 'E'
-              : winner.scoreToPar}
+              : strokeWinner.scoreToPar}
           </span>
         </div>
 
-        <p className="text-xs text-[#d1dfdb]/70 mt-2">
-          {winner.birdies} Birdie{winner.birdies !== 1 ? 's' : ''} • {winner.pars} Par
-          {winner.pars !== 1 ? 's' : ''}
-          {winner.aces > 0 && ` • 🎯 ${winner.aces} ACE!`}
+        <p className="text-xs text-neutral-400 mt-2">
+          {strokeWinner.birdies} Birdie{strokeWinner.birdies !== 1 ? 's' : ''} • {strokeWinner.pars} Par
+          {strokeWinner.pars !== 1 ? 's' : ''}
+          {strokeWinner.aces > 0 && ` • 🎯 ${strokeWinner.aces} ACE!`}
         </p>
 
         <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-center gap-2 text-xs text-amber-300 font-bold">
           <BeerIcon size={16} />
-          <span>Winner drinks for free at Sore Sacks!</span>
+          <span>Champion drinks for free at Sore Sacks!</span>
         </div>
       </div>
 
+      {/* Side Game Honors Grid (Skins, CTP, Long Drive) */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Skins Winner */}
+        {skinsLeader && skinsLeader.skinsWon > 0 && (
+          <div className="p-3.5 rounded-2xl bg-[#111827] border border-amber-500/30 flex flex-col gap-1 shadow">
+            <div className="flex items-center gap-1.5 text-amber-400 text-xs font-black">
+              <span>💰</span>
+              <span>Skins Champion</span>
+            </div>
+            <span className="text-sm font-black text-white truncate">{skinsLeader.playerName}</span>
+            <p className="text-xs font-extrabold text-emerald-400">
+              {skinsLeader.skinsWon} Skins ({skinsLeader.payoutText})
+            </p>
+          </div>
+        )}
+
+        {/* Longest Drive */}
+        {longestDrive && (
+          <div className="p-3.5 rounded-2xl bg-[#111827] border border-emerald-500/30 flex flex-col gap-1 shadow">
+            <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-black">
+              <DiscIcon size={14} />
+              <span>Longest Drive</span>
+            </div>
+            <span className="text-sm font-black text-white truncate">{longestDrive.playerName}</span>
+            <p className="text-xs font-extrabold text-emerald-400">
+              {longestDrive.distanceFt} ft (H{longestDrive.holeNumber})
+            </p>
+          </div>
+        )}
+
+        {/* CTP Highlights */}
+        {ctpList.length > 0 && (
+          <div className="p-3.5 rounded-2xl bg-[#111827] border border-purple-500/30 flex flex-col gap-1 col-span-2 shadow">
+            <div className="flex items-center gap-1.5 text-purple-300 text-xs font-black">
+              <span>🎯</span>
+              <span>Closest to Pin (CTP) Awards</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {ctpList.map((c) => (
+                <span
+                  key={c.holeNumber}
+                  className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-xs text-neutral-300 font-bold"
+                >
+                  Hole {c.holeNumber}: <strong className="text-white">{c.playerName}</strong>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Full Card Standings */}
-      <div className="bg-[#132d34] border border-[#f6eedb]/15 rounded-3xl p-5 shadow-xl flex flex-col gap-3">
-        <h2 className="text-base font-extrabold text-[#f6eedb]">Final Standings</h2>
+      <div className="bg-[#111827] border border-white/10 rounded-3xl p-4 shadow-xl flex flex-col gap-3">
+        <h2 className="text-base font-extrabold text-white">Final Standings</h2>
 
         <div className="flex flex-col gap-2">
           {rankedPlayers.map((item, idx) => {
@@ -133,7 +217,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
                 className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
                   isFirst
                     ? 'bg-amber-400/10 border-amber-400/30'
-                    : 'bg-[#0c1f24] border-white/5'
+                    : 'bg-[#090d16] border-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -151,8 +235,8 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
                     {idx + 1}
                   </span>
                   <div>
-                    <p className="font-extrabold text-sm text-[#f6eedb]">{item.player.name}</p>
-                    <p className="text-[11px] text-[#d1dfdb]/60">
+                    <p className="font-extrabold text-sm text-white">{item.player.name}</p>
+                    <p className="text-[11px] text-neutral-400">
                       {item.birdies}B • {item.pars}P • {item.bogeys}Bog
                     </p>
                   </div>
@@ -163,7 +247,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
                   <span
                     className={`ml-2 text-xs font-bold ${
                       item.scoreToPar < 0
-                        ? 'text-blue-400'
+                        ? 'text-emerald-400'
                         : item.scoreToPar === 0
                         ? 'text-neutral-400'
                         : 'text-orange-400'
@@ -180,28 +264,36 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
         {/* Share Button for Group Chat */}
         <button
           onClick={handleCopySummary}
-          className="mt-2 w-full py-3 rounded-2xl bg-[#193840] hover:bg-[#1f434c] text-white font-bold text-xs flex items-center justify-center gap-2 border border-white/10 transition-colors"
+          className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-neutral-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-98"
         >
-          {copied ? <CheckIcon size={16} className="text-emerald-400" /> : <ShareIcon size={16} />}
-          <span>{copied ? 'Scorecard Copied to Clipboard!' : 'Copy Summary for Group Chat'}</span>
+          {copied ? (
+            <>
+              <CheckIcon size={18} />
+              <span>Copied Recap to Clipboard!</span>
+            </>
+          ) : (
+            <>
+              <ShareIcon size={18} />
+              <span>Copy Full Recap for Group Chat</span>
+            </>
+          )}
         </button>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="flex flex-col gap-2 pt-2">
+      {/* Action Buttons */}
+      <div className="flex flex-col gap-2">
         <button
           onClick={onViewLeaderboard}
-          className="w-full py-3.5 rounded-2xl bg-[#ea5826] hover:bg-[#f36c3a] text-white font-black text-sm shadow-lg shadow-[#ea5826]/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
+          className="w-full py-3.5 rounded-2xl bg-[#111827] hover:bg-[#1f2937] border border-white/10 text-white font-bold text-sm shadow transition-colors"
         >
-          <TrophyIcon size={18} />
-          <span>View All-Time Course Records</span>
+          View All-Time Course Records
         </button>
 
         <button
           onClick={onNewRound}
-          className="w-full py-3.5 rounded-2xl bg-[#132d34] hover:bg-[#193840] border border-white/15 text-[#f6eedb] font-bold text-sm transition-colors"
+          className="w-full py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white font-bold text-sm transition-colors"
         >
-          Play Another Round
+          Start Another Round
         </button>
       </div>
     </div>

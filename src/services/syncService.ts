@@ -1,4 +1,11 @@
-import { Round, Player, LeaderboardEntry } from '../types';
+import {
+  Round,
+  Player,
+  LeaderboardEntry,
+  SkinsConfig,
+  CtpWinner,
+  MeasuredThrow
+} from '../types';
 import { courseData } from '../data/courseData';
 import { supabase } from './supabaseClient';
 
@@ -245,6 +252,64 @@ export const syncService = {
     const player = round.players.find((p) => p.id === playerId);
     if (player) {
       player.scores[holeNumber] = Math.max(1, Math.min(15, strokes));
+      this.saveRound(round);
+    }
+    return round;
+  },
+
+  updateSkinsConfig(config: SkinsConfig): Round | null {
+    const round = this.getStoredRound();
+    if (!round) return null;
+    round.skinsConfig = config;
+    this.saveRound(round);
+    return round;
+  },
+
+  markCtp(holeNumber: number, playerId: string, distanceInches?: number): Round | null {
+    const round = this.getStoredRound();
+    if (!round) return null;
+    if (!round.ctpWinners) round.ctpWinners = {};
+    const player = round.players.find((p) => p.id === playerId);
+    if (player) {
+      round.ctpWinners[holeNumber] = {
+        holeNumber,
+        playerId,
+        playerName: player.name,
+        distanceInches,
+        markedAt: Date.now()
+      };
+      this.saveRound(round);
+    }
+    return round;
+  },
+
+  saveMeasuredThrow(measuredThrow: MeasuredThrow): Round | null {
+    const round = this.getStoredRound();
+    if (!round) return null;
+    if (!round.measuredThrows) round.measuredThrows = [];
+    round.measuredThrows.unshift(measuredThrow);
+
+    const player = round.players.find((p) => p.id === measuredThrow.playerId);
+    if (player) {
+      if (!player.throws) player.throws = [];
+      player.throws.unshift(measuredThrow);
+    }
+    this.saveRound(round);
+    return round;
+  },
+
+  updatePlayerLocation(playerId: string, lat: number, lng: number, accuracy?: number): Round | null {
+    const round = this.getStoredRound();
+    if (!round) return null;
+
+    const player = round.players.find((p) => p.id === playerId);
+    if (player) {
+      player.location = {
+        lat,
+        lng,
+        accuracy,
+        updatedAt: Date.now()
+      };
       this.saveRound(round);
     }
     return round;

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Round } from '../types';
 import { courseData } from '../data/courseData';
+import { calculateSkins } from '../utils/skins';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -8,7 +9,8 @@ import {
   MinusIcon,
   MapPinIcon,
   TrophyIcon,
-  CheckIcon
+  CheckIcon,
+  DiscIcon
 } from './Icons';
 
 interface ScorecardProps {
@@ -18,6 +20,9 @@ interface ScorecardProps {
   onOpenMap: () => void;
   onOpenFullScorecard: () => void;
   onFinishRound: () => void;
+  onOpenSkinsModal?: () => void;
+  onOpenThrowTracker?: () => void;
+  onMarkCtp?: (holeNumber: number, playerId: string) => void;
 }
 
 export const Scorecard: React.FC<ScorecardProps> = ({
@@ -26,10 +31,18 @@ export const Scorecard: React.FC<ScorecardProps> = ({
   onSelectHole,
   onOpenMap,
   onOpenFullScorecard,
-  onFinishRound
+  onFinishRound,
+  onOpenSkinsModal,
+  onOpenThrowTracker,
+  onMarkCtp
 }) => {
   const currentHole =
     courseData.holes.find((h) => h.number === round.currentHole) || courseData.holes[0];
+
+  const [showCtpPicker, setShowCtpPicker] = useState<boolean>(false);
+
+  const skinsData = calculateSkins(round);
+  const currentCtp = round.ctpWinners?.[currentHole.number];
 
   const handlePrevHole = () => {
     if (round.currentHole > 1) {
@@ -134,8 +147,8 @@ export const Scorecard: React.FC<ScorecardProps> = ({
         <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
           {courseData.holes.map((h) => {
             const isCurrent = h.number === round.currentHole;
-            // Check if all players have scored this hole
             const allScored = round.players.every((p) => p.scores[h.number] !== undefined);
+            const holeHasCtp = round.ctpWinners?.[h.number];
 
             return (
               <button
@@ -149,6 +162,9 @@ export const Scorecard: React.FC<ScorecardProps> = ({
               >
                 <div className="flex items-center gap-0.5">
                   <span className="text-xs font-extrabold leading-none">{h.number}</span>
+                  {holeHasCtp && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="CTP Claimed" />
+                  )}
                   {allScored && !isCurrent && (
                     <CheckIcon size={10} className="text-emerald-400" />
                   )}
@@ -163,7 +179,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
       </div>
 
       {/* 2. Main Hole Banner Card */}
-      <div className="bg-[#111827] border border-white/10 rounded-3xl p-5 shadow-xl">
+      <div className="bg-[#111827] border border-white/10 rounded-3xl p-4 shadow-xl flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <button
             onClick={handlePrevHole}
@@ -207,17 +223,91 @@ export const Scorecard: React.FC<ScorecardProps> = ({
           </button>
         </div>
 
-        {/* Caddie Tip & Quick Map Launch */}
-        <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-          <p className="text-neutral-300/80 truncate pr-2">
-            💡 {currentHole.notes || 'Navigate to basket with care.'}
-          </p>
+        {/* Action Toolbar: Skins, CTP, Measure Drive, GPS Map */}
+        <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-white/10">
+          {onOpenSkinsModal && (
+            <button
+              onClick={onOpenSkinsModal}
+              className="py-1.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-extrabold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-sm"
+              title="Open Skins Game"
+            >
+              <span>💰 Skins</span>
+              {skinsData.currentPot > 1 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-neutral-950 text-[9px] font-black">
+                  +{skinsData.currentPot}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* CTP Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowCtpPicker(!showCtpPicker)}
+              className={`w-full py-1.5 px-2 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1 border transition-colors shadow-sm ${
+                currentCtp
+                  ? 'bg-emerald-500 text-neutral-950 border-emerald-400 font-black'
+                  : 'bg-white/5 hover:bg-white/10 text-neutral-300 border-white/10'
+              }`}
+              title="Tag Closest to Pin"
+            >
+              <span>🎯 CTP</span>
+              {currentCtp && (
+                <span className="truncate max-w-[42px] text-[10px]">
+                  {currentCtp.playerName.split(' ')[0]}
+                </span>
+              )}
+            </button>
+
+            {/* Quick CTP Player Picker Popover */}
+            {showCtpPicker && onMarkCtp && (
+              <div className="absolute left-0 top-full mt-1.5 w-44 bg-[#111827] border border-white/15 rounded-2xl p-2 shadow-2xl z-30 flex flex-col gap-1">
+                <span className="text-[10px] font-black text-neutral-400 uppercase px-2 py-0.5">
+                  Who Won CTP?
+                </span>
+                {round.players.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      onMarkCtp(currentHole.number, p.id);
+                      setShowCtpPicker(false);
+                    }}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-colors ${
+                      currentCtp?.playerId === p.id
+                        ? 'bg-emerald-500/20 text-emerald-300 font-black'
+                        : 'hover:bg-white/10 text-neutral-200'
+                    }`}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Measure Drive Button */}
+          {onOpenThrowTracker && (
+            <button
+              onClick={onOpenThrowTracker}
+              className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-extrabold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-sm"
+              title="Measure Drive Distance with GPS"
+            >
+              <DiscIcon size={13} className="text-emerald-400" />
+              <span>Drive</span>
+            </button>
+          )}
+
+          {/* GPS Map Button */}
           <button
             onClick={onOpenMap}
-            className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+            className="py-1.5 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-extrabold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-sm"
           >
-            <MapPinIcon size={14} />
-            <span>GPS Map</span>
+            <MapPinIcon size={13} />
+            <span>Map</span>
           </button>
         </div>
       </div>
@@ -227,6 +317,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
         {playerStats.map(({ player, totalScore, scoreToPar }) => {
           const strokes = player.scores[currentHole.number] ?? currentHole.par;
           const isLeader = round.players.length > 1 && totalScore === lowestScore;
+          const isCtpWinner = currentCtp?.playerId === player.id;
 
           return (
             <div
@@ -250,6 +341,11 @@ export const Scorecard: React.FC<ScorecardProps> = ({
                       {isLeader && (
                         <span className="text-amber-400" title="Current Round Leader">
                           <TrophyIcon size={16} />
+                        </span>
+                      )}
+                      {isCtpWinner && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-neutral-950 text-[9px] font-black">
+                          🎯 CTP
                         </span>
                       )}
                     </div>
