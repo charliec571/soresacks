@@ -61,8 +61,10 @@ export const Scorecard: React.FC<ScorecardProps> = ({
   const handleScoreChange = (playerId: string, delta: number) => {
     const player = round.players.find((p) => p.id === playerId);
     if (!player) return;
-    const currentScore = player.scores[currentHole.number] ?? currentHole.par;
-    const newScore = Math.max(1, Math.min(15, currentScore + delta));
+    const currentScore = player.scores[currentHole.number];
+    // If not entered yet, start from par
+    const baseScore = currentScore ?? currentHole.par;
+    const newScore = Math.max(1, Math.min(15, baseScore + delta));
     onUpdateScore(playerId, currentHole.number, newScore);
   };
 
@@ -70,80 +72,96 @@ export const Scorecard: React.FC<ScorecardProps> = ({
     onUpdateScore(playerId, currentHole.number, Math.max(1, Math.min(15, strokes)));
   };
 
-  // Calculate cumulative stats for each player
+  // Calculate cumulative stats for each player (only count holes that have entered scores)
   const playerStats = round.players.map((p) => {
     let totalScore = 0;
+    let parForScoredHoles = 0;
+    let scoredHolesCount = 0;
     courseData.holes.forEach((h) => {
-      const s = p.scores[h.number] ?? h.par;
-      totalScore += s;
+      const s = p.scores[h.number];
+      if (s !== undefined) {
+        totalScore += s;
+        parForScoredHoles += h.par;
+        scoredHolesCount++;
+      }
     });
 
-    const scoreToPar = totalScore - courseData.totalPar;
+    const scoreToPar = totalScore - parForScoredHoles;
     return {
       player: p,
       totalScore,
-      scoreToPar
+      scoreToPar,
+      scoredHolesCount
     };
   });
 
-  // Find lowest score
-  const lowestScore = Math.min(...playerStats.map((s) => s.totalScore));
+  // Find lowest score among players who have scored holes
+  const lowestScore = playerStats.some((s) => s.scoredHolesCount > 0)
+    ? Math.min(...playerStats.filter((s) => s.scoredHolesCount > 0).map((s) => s.totalScore))
+    : null;
 
-  const getScoreBadge = (strokes: number, par: number) => {
+  const getScoreBadge = (strokes: number | undefined, par: number) => {
+    if (strokes === undefined) {
+      return (
+        <span className="px-2 py-0.5 rounded-md bg-neutral-800/80 text-neutral-400 text-[11px] font-bold border border-white/5">
+          Not Scored
+        </span>
+      );
+    }
     const diff = strokes - par;
     if (strokes === 1) {
       return (
-        <span className="px-2.5 py-1 rounded-full bg-amber-400 text-neutral-950 text-xs font-black uppercase tracking-wider shadow">
+        <span className="px-2 py-0.5 rounded-full bg-amber-400 text-neutral-950 text-[11px] font-black uppercase tracking-wider shadow">
           ★ Ace (1)
         </span>
       );
     }
     if (diff <= -2) {
       return (
-        <span className="px-2.5 py-1 rounded-full bg-blue-500 text-white text-xs font-black shadow">
+        <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[11px] font-black shadow">
           Eagle ({strokes})
         </span>
       );
     }
     if (diff === -1) {
       return (
-        <span className="px-2.5 py-1 rounded-full bg-emerald-500 text-neutral-950 text-xs font-black shadow">
+        <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-neutral-950 text-[11px] font-black shadow">
           Birdie ({strokes})
         </span>
       );
     }
     if (diff === 0) {
       return (
-        <span className="px-2.5 py-1 rounded-md bg-neutral-700/80 text-neutral-200 text-xs font-bold border border-neutral-600">
+        <span className="px-2 py-0.5 rounded-md bg-neutral-700/80 text-neutral-200 text-[11px] font-bold border border-neutral-600">
           Par ({strokes})
         </span>
       );
     }
     if (diff === 1) {
       return (
-        <span className="px-2.5 py-1 rounded-sm bg-orange-600 text-white text-xs font-black shadow">
+        <span className="px-2 py-0.5 rounded-sm bg-orange-600 text-white text-[11px] font-black shadow">
           Bogey ({strokes})
         </span>
       );
     }
     if (diff === 2) {
       return (
-        <span className="px-2.5 py-1 rounded-none bg-rose-600 text-white text-xs font-black shadow">
+        <span className="px-2 py-0.5 rounded-none bg-rose-600 text-white text-[11px] font-black shadow">
           Double ({strokes})
         </span>
       );
     }
     return (
-      <span className="px-2.5 py-1 bg-rose-900 border border-rose-600 text-rose-200 text-xs font-black">
+      <span className="px-2 py-0.5 bg-rose-900 border border-rose-600 text-rose-200 text-[11px] font-black">
         +{diff} ({strokes})
       </span>
     );
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-32 animate-fade-in">
+    <div className="flex flex-col gap-2.5 pb-28 animate-fade-in">
       {/* 1. Hole Quick-Select Pill Carousel (H1 to H9) */}
-      <div className="bg-[#111827] border border-white/10 rounded-2xl p-2 shadow-lg">
+      <div className="bg-[#111827] border border-white/10 rounded-2xl p-1.5 shadow-md">
         <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
           {courseData.holes.map((h) => {
             const isCurrent = h.number === round.currentHole;
@@ -154,7 +172,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
               <button
                 key={h.number}
                 onClick={() => onSelectHole(h.number)}
-                className={`flex-1 min-w-[50px] py-2 px-1 rounded-xl flex flex-col items-center justify-center transition-all ${
+                className={`flex-1 min-w-[46px] py-1 px-1 rounded-xl flex flex-col items-center justify-center transition-all ${
                   isCurrent
                     ? 'bg-gradient-to-tr from-[#10b981] to-[#059669] text-white font-black shadow-md scale-105 ring-2 ring-emerald-400/50'
                     : 'bg-[#090d16] hover:bg-neutral-800 text-neutral-300 border border-white/5'
@@ -178,34 +196,34 @@ export const Scorecard: React.FC<ScorecardProps> = ({
         </div>
       </div>
 
-      {/* 2. Main Hole Banner Card */}
-      <div className="bg-[#111827] border border-white/10 rounded-3xl p-4 shadow-xl flex flex-col gap-3">
+      {/* 2. Main Hole Banner Card (Compact) */}
+      <div className="bg-[#111827] border border-white/10 rounded-2xl p-2.5 shadow-lg flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <button
             onClick={handlePrevHole}
             disabled={round.currentHole === 1}
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${
+            className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${
               round.currentHole === 1
                 ? 'opacity-25 border-white/5 text-neutral-600 cursor-not-allowed'
                 : 'bg-[#1f2937] hover:bg-[#374151] border-white/10 text-white active:scale-90'
             }`}
             title="Previous Hole"
           >
-            <ChevronLeftIcon size={24} />
+            <ChevronLeftIcon size={18} />
           </button>
 
           <div className="flex flex-col items-center text-center">
-            <div className="flex items-center gap-2">
-              <span className="text-3xl font-black text-white tracking-tight">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl font-black text-white tracking-tight">
                 Hole {currentHole.number}
               </span>
               {currentHole.isSafari && (
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/25 border border-purple-400 text-purple-300 text-[10px] font-black uppercase">
+                <span className="px-1.5 py-0.2 rounded-full bg-purple-500/25 border border-purple-400 text-purple-300 text-[9px] font-black uppercase">
                   Safari
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-1 text-sm font-extrabold text-neutral-300">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-neutral-300">
               <span className="text-emerald-400">Par {currentHole.par}</span>
               <span className="text-neutral-600">•</span>
               <span className="text-[#f97316]">{currentHole.distanceFt} ft</span>
@@ -216,24 +234,24 @@ export const Scorecard: React.FC<ScorecardProps> = ({
 
           <button
             onClick={handleNextHole}
-            className="w-12 h-12 rounded-2xl bg-[#1f2937] hover:bg-[#374151] border border-white/10 text-white flex items-center justify-center active:scale-90 transition-all"
+            className="w-9 h-9 rounded-xl bg-[#1f2937] hover:bg-[#374151] border border-white/10 text-white flex items-center justify-center active:scale-90 transition-all"
             title="Next Hole"
           >
-            <ChevronRightIcon size={24} />
+            <ChevronRightIcon size={18} />
           </button>
         </div>
 
         {/* Action Toolbar: Skins, CTP, Measure Drive, GPS Map */}
-        <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-white/10">
+        <div className="grid grid-cols-4 gap-1 pt-1.5 border-t border-white/10">
           {onOpenSkinsModal && (
             <button
               onClick={onOpenSkinsModal}
-              className="py-1.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-extrabold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-sm"
+              className="py-1 px-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-extrabold text-[10px] flex items-center justify-center gap-1 transition-colors shadow-sm"
               title="Open Skins Game"
             >
               <span>💰 Skins</span>
               {skinsData.currentPot > 1 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-neutral-950 text-[9px] font-black">
+                <span className="px-1 py-0.1 rounded-full bg-amber-400 text-neutral-950 text-[8px] font-black">
                   +{skinsData.currentPot}
                 </span>
               )}
@@ -244,7 +262,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowCtpPicker(!showCtpPicker)}
-              className={`w-full py-1.5 px-2 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1 border transition-colors shadow-sm ${
+              className={`w-full py-1 px-1.5 rounded-lg text-[10px] font-extrabold flex items-center justify-center gap-1 border transition-colors shadow-sm ${
                 currentCtp
                   ? 'bg-emerald-500 text-neutral-950 border-emerald-400 font-black'
                   : 'bg-white/5 hover:bg-white/10 text-neutral-300 border-white/10'
@@ -253,7 +271,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
             >
               <span>🎯 CTP</span>
               {currentCtp && (
-                <span className="truncate max-w-[42px] text-[10px]">
+                <span className="truncate max-w-[36px] text-[9px]">
                   {currentCtp.playerName.split(' ')[0]}
                 </span>
               )}
@@ -293,10 +311,10 @@ export const Scorecard: React.FC<ScorecardProps> = ({
           {onOpenThrowTracker && (
             <button
               onClick={onOpenThrowTracker}
-              className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-extrabold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-sm"
+              className="py-1 px-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-extrabold text-[10px] flex items-center justify-center gap-1 transition-colors shadow-sm"
               title="Measure Drive Distance with GPS"
             >
-              <DiscIcon size={13} className="text-emerald-400" />
+              <DiscIcon size={11} className="text-emerald-400" />
               <span>Drive</span>
             </button>
           )}
@@ -304,110 +322,119 @@ export const Scorecard: React.FC<ScorecardProps> = ({
           {/* GPS Map Button */}
           <button
             onClick={onOpenMap}
-            className="py-1.5 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-extrabold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-sm"
+            className="py-1 px-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-extrabold text-[10px] flex items-center justify-center gap-1 transition-colors shadow-sm"
           >
-            <MapPinIcon size={13} />
+            <MapPinIcon size={11} />
             <span>Map</span>
           </button>
         </div>
       </div>
 
-      {/* 3. Players Scoring Cards */}
-      <div className="flex flex-col gap-3">
-        {playerStats.map(({ player, totalScore, scoreToPar }) => {
-          const strokes = player.scores[currentHole.number] ?? currentHole.par;
-          const isLeader = round.players.length > 1 && totalScore === lowestScore;
+      {/* 3. Players Scoring Cards (Shortened vertically to easily view 3+ players) */}
+      <div className="flex flex-col gap-2">
+        {playerStats.map(({ player, totalScore, scoreToPar, scoredHolesCount }) => {
+          const strokes = player.scores[currentHole.number];
+          const hasScore = strokes !== undefined;
+          const isLeader = lowestScore !== null && round.players.length > 1 && totalScore === lowestScore;
           const isCtpWinner = currentCtp?.playerId === player.id;
 
           return (
             <div
               key={player.id}
-              className="bg-[#111827] border border-white/10 rounded-3xl p-4 shadow-lg flex flex-col gap-3 transition-all"
+              className={`bg-[#111827] border rounded-2xl p-2.5 shadow-md flex flex-col gap-2 transition-all ${
+                hasScore ? 'border-white/15' : 'border-dashed border-white/10'
+              }`}
             >
-              {/* Player Info Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              {/* Player Info Header & Touch Controls Row */}
+              <div className="flex items-center justify-between gap-2">
+                {/* Left: Player Avatar & Details */}
+                <div className="flex items-center gap-2 min-w-0">
                   <div
-                    className="w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-sm shadow-md"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shadow flex-shrink-0"
                     style={{ backgroundColor: player.color }}
                   >
                     {player.name.substring(0, 2).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-base text-white">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-extrabold text-sm text-white truncate">
                         {player.name}
                       </span>
                       {isLeader && (
-                        <span className="text-amber-400" title="Current Round Leader">
-                          <TrophyIcon size={16} />
+                        <span className="text-amber-400 flex-shrink-0" title="Current Round Leader">
+                          <TrophyIcon size={13} />
                         </span>
                       )}
                       {isCtpWinner && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-neutral-950 text-[9px] font-black">
+                        <span className="px-1 py-0.2 rounded-full bg-amber-400 text-neutral-950 text-[8px] font-black flex-shrink-0">
                           🎯 CTP
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-neutral-400 flex items-center gap-2 mt-0.5">
-                      <span>Total: <strong className="text-white">{totalScore}</strong></span>
+                    <div className="text-[11px] text-neutral-400 flex items-center gap-1.5 leading-none">
+                      <span>Tot: <strong className="text-white">{scoredHolesCount > 0 ? totalScore : '-'}</strong></span>
                       <span>•</span>
                       <span
                         className={`font-black ${
-                          scoreToPar < 0
+                          scoredHolesCount === 0
+                            ? 'text-neutral-500'
+                            : scoreToPar < 0
                             ? 'text-emerald-400'
                             : scoreToPar === 0
                             ? 'text-neutral-300'
                             : 'text-orange-400'
                         }`}
                       >
-                        {scoreToPar > 0 ? `+${scoreToPar}` : scoreToPar === 0 ? 'E' : scoreToPar}
+                        {scoredHolesCount === 0 ? '-' : scoreToPar > 0 ? `+${scoreToPar}` : scoreToPar === 0 ? 'E' : scoreToPar}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Score Status Badge */}
-                <div>{getScoreBadge(strokes, currentHole.par)}</div>
-              </div>
+                {/* Center/Right: Score Badge & Increment Buttons */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleScoreChange(player.id, -1)}
+                    disabled={hasScore && strokes <= 1}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-lg font-bold transition-all shadow-sm active:scale-90 ${
+                      hasScore && strokes <= 1
+                        ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed border border-neutral-700'
+                        : 'bg-[#1f2937] hover:bg-[#374151] border border-white/15'
+                    }`}
+                    title="Decrease strokes"
+                  >
+                    <MinusIcon size={16} />
+                  </button>
 
-              {/* Large Touch Stroke Incrementor */}
-              <div className="flex items-center justify-between gap-4 pt-1">
-                <button
-                  onClick={() => handleScoreChange(player.id, -1)}
-                  disabled={strokes <= 1}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold transition-all shadow-md active:scale-90 ${
-                    strokes <= 1
-                      ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed border border-neutral-700'
-                      : 'bg-[#1f2937] hover:bg-[#374151] border border-white/15'
-                  }`}
-                >
-                  <MinusIcon size={26} />
-                </button>
+                  <div className="w-11 text-center flex flex-col items-center justify-center">
+                    <span
+                      className={`text-2xl font-black tracking-tight leading-none ${
+                        hasScore ? 'text-white' : 'text-neutral-500'
+                      }`}
+                    >
+                      {hasScore ? strokes : '-'}
+                    </span>
+                    <span className="text-[8px] font-extrabold text-neutral-500 uppercase tracking-wider mt-0.5">
+                      {hasScore ? 'Strokes' : 'Enter'}
+                    </span>
+                  </div>
 
-                <div className="flex-1 flex flex-col items-center justify-center">
-                  <span className="text-5xl font-black text-white tracking-tight">
-                    {strokes}
-                  </span>
-                  <span className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-0.5">
-                    Strokes
-                  </span>
+                  <button
+                    onClick={() => handleScoreChange(player.id, 1)}
+                    disabled={hasScore && strokes >= 15}
+                    className="w-9 h-9 rounded-xl bg-[#10b981] hover:bg-[#059669] active:scale-90 text-neutral-950 text-lg font-black flex items-center justify-center transition-all shadow-md shadow-emerald-500/20 border border-emerald-400"
+                    title="Increase strokes"
+                  >
+                    <PlusIcon size={16} />
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => handleScoreChange(player.id, 1)}
-                  disabled={strokes >= 15}
-                  className="w-14 h-14 rounded-2xl bg-[#10b981] hover:bg-[#059669] active:scale-90 text-neutral-950 text-2xl font-black flex items-center justify-center transition-all shadow-lg shadow-emerald-500/20 border border-emerald-400"
-                >
-                  <PlusIcon size={26} />
-                </button>
               </div>
 
-              {/* One-Tap Presets */}
-              <div className="grid grid-cols-4 gap-1.5 pt-1">
+              {/* Compact One-Tap Presets Row */}
+              <div className="grid grid-cols-4 gap-1 pt-1 border-t border-white/5">
                 <button
                   onClick={() => handleSetExactScore(player.id, 1)}
-                  className={`py-2 rounded-xl text-xs font-black transition-all border ${
+                  className={`py-1 rounded-lg text-[10px] font-extrabold transition-all border ${
                     strokes === 1
                       ? 'bg-amber-400 text-neutral-950 border-amber-300 shadow'
                       : 'bg-[#090d16] hover:bg-[#1f2937] text-amber-300 border-white/5'
@@ -417,7 +444,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
                 </button>
                 <button
                   onClick={() => handleSetExactScore(player.id, currentHole.par - 1)}
-                  className={`py-2 rounded-xl text-xs font-black transition-all border ${
+                  className={`py-1 rounded-lg text-[10px] font-extrabold transition-all border ${
                     strokes === currentHole.par - 1
                       ? 'bg-emerald-500 text-neutral-950 border-emerald-400 shadow'
                       : 'bg-[#090d16] hover:bg-[#1f2937] text-emerald-400 border-white/5'
@@ -427,7 +454,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
                 </button>
                 <button
                   onClick={() => handleSetExactScore(player.id, currentHole.par)}
-                  className={`py-2 rounded-xl text-xs font-black transition-all border ${
+                  className={`py-1 rounded-lg text-[10px] font-extrabold transition-all border ${
                     strokes === currentHole.par
                       ? 'bg-neutral-600 text-white border-neutral-500 shadow'
                       : 'bg-[#090d16] hover:bg-[#1f2937] text-neutral-300 border-white/5'
@@ -437,7 +464,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
                 </button>
                 <button
                   onClick={() => handleSetExactScore(player.id, currentHole.par + 1)}
-                  className={`py-2 rounded-xl text-xs font-black transition-all border ${
+                  className={`py-1 rounded-lg text-[10px] font-extrabold transition-all border ${
                     strokes === currentHole.par + 1
                       ? 'bg-orange-600 text-white border-orange-500 shadow'
                       : 'bg-[#090d16] hover:bg-[#1f2937] text-orange-300 border-white/5'

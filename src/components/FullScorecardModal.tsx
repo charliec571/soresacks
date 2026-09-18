@@ -108,10 +108,17 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
             <tbody>
               {round.players.map((player) => {
                 let total = 0;
+                let parForScoredHoles = 0;
+                let scoredCount = 0;
                 courseData.holes.forEach((h) => {
-                  total += player.scores[h.number] ?? h.par;
+                  const s = player.scores[h.number];
+                  if (s !== undefined) {
+                    total += s;
+                    parForScoredHoles += h.par;
+                    scoredCount++;
+                  }
                 });
-                const scoreToPar = total - courseData.totalPar;
+                const scoreToPar = total - parForScoredHoles;
 
                 return (
                   <tr key={player.id} className="border-b border-white/10">
@@ -146,17 +153,27 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
                       );
                     })}
 
-                    <td className="py-2 px-2 font-black text-white text-sm">{total}</td>
+                    <td className="py-2 px-2 font-black text-white text-sm">
+                      {scoredCount > 0 ? total : '-'}
+                    </td>
                     <td
                       className={`py-2 px-2 font-black text-sm ${
-                        scoreToPar < 0
+                        scoredCount === 0
+                          ? 'text-neutral-500'
+                          : scoreToPar < 0
                           ? 'text-blue-400'
                           : scoreToPar === 0
                           ? 'text-neutral-300'
                           : 'text-orange-400'
                       }`}
                     >
-                      {scoreToPar > 0 ? `+${scoreToPar}` : scoreToPar === 0 ? 'E' : scoreToPar}
+                      {scoredCount === 0
+                        ? '-'
+                        : scoreToPar > 0
+                        ? `+${scoreToPar}`
+                        : scoreToPar === 0
+                        ? 'E'
+                        : scoreToPar}
                     </td>
                   </tr>
                 );

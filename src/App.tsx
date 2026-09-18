@@ -404,6 +404,7 @@ export const App: React.FC = () => {
                 setSetupMode('create');
                 setActiveTab('scorecard');
               }}
+              onCancelRound={handleNewRound}
             />
           )}
 

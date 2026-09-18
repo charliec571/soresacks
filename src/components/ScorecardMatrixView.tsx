@@ -1,19 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Round } from '../types';
 import { courseData } from '../data/courseData';
-import { DiscIcon, FlagIcon } from './Icons';
+import { DiscIcon, FlagIcon, CloseIcon } from './Icons';
 
 interface ScorecardMatrixViewProps {
   round: Round | null;
   onSelectHole: (holeNumber: number) => void;
   onStartRoundClick?: () => void;
+  onCancelRound?: () => void;
 }
 
 export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
   round,
   onSelectHole,
-  onStartRoundClick
+  onStartRoundClick,
+  onCancelRound
 }) => {
+  const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const getCellBg = (strokes: number | undefined, par: number) => {
     if (strokes === undefined) return 'bg-[#090d16] text-neutral-600';
     const diff = strokes - par;
@@ -118,10 +121,17 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
               {round && round.players && round.players.length > 0 ? (
                 round.players.map((player) => {
                   let total = 0;
+                  let parForScoredHoles = 0;
+                  let scoredCount = 0;
                   courseData.holes.forEach((h) => {
-                    total += player.scores[h.number] ?? h.par;
+                    const s = player.scores[h.number];
+                    if (s !== undefined) {
+                      total += s;
+                      parForScoredHoles += h.par;
+                      scoredCount++;
+                    }
                   });
-                  const scoreToPar = total - courseData.totalPar;
+                  const scoreToPar = total - parForScoredHoles;
 
                   return (
                     <tr key={player.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
@@ -153,17 +163,27 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
                         );
                       })}
 
-                      <td className="py-2 px-2 font-black text-white text-sm">{total}</td>
+                      <td className="py-2 px-2 font-black text-white text-sm">
+                        {scoredCount > 0 ? total : '-'}
+                      </td>
                       <td
                         className={`py-2 px-2 font-black text-sm ${
-                          scoreToPar < 0
+                          scoredCount === 0
+                            ? 'text-neutral-500'
+                            : scoreToPar < 0
                             ? 'text-emerald-400'
                             : scoreToPar === 0
                             ? 'text-neutral-300'
                             : 'text-orange-400'
                         }`}
                       >
-                        {scoreToPar > 0 ? `+${scoreToPar}` : scoreToPar === 0 ? 'E' : scoreToPar}
+                        {scoredCount === 0
+                          ? '-'
+                          : scoreToPar > 0
+                          ? `+${scoreToPar}`
+                          : scoreToPar === 0
+                          ? 'E'
+                          : scoreToPar}
                       </td>
                     </tr>
                   );
@@ -206,6 +226,56 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Cancel Active Round Button (If round is active) */}
+      {round && onCancelRound && (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setShowCancelConfirm(true)}
+            className="w-full py-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:text-rose-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm"
+          >
+            <CloseIcon size={16} />
+            <span>Cancel Active Round</span>
+          </button>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && onCancelRound && (
+        <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-[#111827] border border-white/15 rounded-3xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 flex-shrink-0">
+                <CloseIcon size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">Cancel Round?</h3>
+                <p className="text-xs text-neutral-400 font-medium mt-0.5">
+                  This will discard the current round in progress and reset the card.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/10">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-bold text-xs transition-colors"
+              >
+                Keep Playing
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  onCancelRound();
+                }}
+                className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-colors shadow-lg shadow-rose-900/30"
+              >
+                Yes, Cancel Round
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Start Round CTA if not playing */}
       {!round && onStartRoundClick && (
