@@ -379,6 +379,7 @@ export const App: React.FC = () => {
                   onOpenSkinsModal={() => setIsSkinsModalOpen(true)}
                   onOpenThrowTracker={() => setIsThrowTrackerOpen(true)}
                   onMarkCtp={handleMarkCtp}
+                  onCancelRound={handleNewRound}
                 />
               )}
 

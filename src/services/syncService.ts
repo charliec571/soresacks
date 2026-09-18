@@ -157,15 +157,11 @@ export const syncService = {
   createRound(playerNames: string[]): Round {
     const code = generateRoomCode();
     const players: Player[] = playerNames.map((name, idx) => {
-      const initialScores: Record<number, number> = {};
-      courseData.holes.forEach((h) => {
-        initialScores[h.number] = h.par; // default to par
-      });
       return {
         id: 'p_' + Math.random().toString(36).substring(2, 9),
         name: name.trim() || `Player ${idx + 1}`,
         color: PLAYER_COLORS[idx % PLAYER_COLORS.length],
-        scores: initialScores,
+        scores: {}, // Empty scores by default so each hole shows hyphen '-' until entered
         putts: {},
         penalties: {}
       };
