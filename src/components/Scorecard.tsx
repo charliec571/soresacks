@@ -24,7 +24,6 @@ interface ScorecardProps {
   onOpenSkinsModal?: () => void;
   onOpenThrowTracker?: () => void;
   onMarkCtp?: (holeNumber: number, playerId: string) => void;
-  onCancelRound?: () => void;
 }
 
 export const Scorecard: React.FC<ScorecardProps> = ({
@@ -36,14 +35,12 @@ export const Scorecard: React.FC<ScorecardProps> = ({
   onFinishRound,
   onOpenSkinsModal,
   onOpenThrowTracker,
-  onMarkCtp,
-  onCancelRound
+  onMarkCtp
 }) => {
   const currentHole =
     courseData.holes.find((h) => h.number === round.currentHole) || courseData.holes[0];
 
   const [showCtpPicker, setShowCtpPicker] = useState<boolean>(false);
-  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
 
   const skinsData = calculateSkins(round);
   const currentCtp = round.ctpWinners?.[currentHole.number];
@@ -509,53 +506,11 @@ export const Scorecard: React.FC<ScorecardProps> = ({
           <span>View Full Scorecard Matrix</span>
         </button>
 
-        {onCancelRound && (
-          <button
-            onClick={() => setShowCancelModal(true)}
-            className="w-full py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:text-rose-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm mt-1"
-          >
-            <CloseIcon size={15} />
-            <span>Cancel Active Round</span>
-          </button>
-        )}
+        {/* Safe notice: Cancel is located on the Matrix page to prevent accidental cancellations */}
+        <p className="text-center text-[10px] text-neutral-500 font-medium py-1">
+          Need to cancel this round? Head to the <button onClick={onOpenFullScorecard} className="text-neutral-400 hover:text-emerald-400 underline font-semibold transition-colors">Matrix tab</button>.
+        </p>
       </div>
-
-      {/* Cancel Confirmation Modal */}
-      {showCancelModal && onCancelRound && (
-        <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#111827] border border-white/15 rounded-3xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 flex-shrink-0">
-                <CloseIcon size={22} />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-white">Cancel Round?</h3>
-                <p className="text-xs text-neutral-400 font-medium mt-0.5">
-                  This will discard the current round in progress and reset the card.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/10">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-bold text-xs transition-colors"
-              >
-                Keep Playing
-              </button>
-              <button
-                onClick={() => {
-                  setShowCancelModal(false);
-                  onCancelRound();
-                }}
-                className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-colors shadow-lg shadow-rose-900/30"
-              >
-                Yes, Cancel Round
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
