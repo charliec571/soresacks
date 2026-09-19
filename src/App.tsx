@@ -16,7 +16,8 @@ import { FullScorecardModal } from './components/FullScorecardModal';
 import { ShareRoomModal } from './components/ShareRoomModal';
 import { SkinsModal } from './components/SkinsModal';
 import { ThrowTrackerModal } from './components/ThrowTrackerModal';
-import { ShareIcon } from './components/Icons';
+import { FlappyDiscGame } from './components/FlappyDiscGame';
+import { ShareIcon, GamepadIcon } from './components/Icons';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('scorecard');
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [isSkinsModalOpen, setIsSkinsModalOpen] = useState<boolean>(false);
   const [isThrowTrackerOpen, setIsThrowTrackerOpen] = useState<boolean>(false);
+  const [isFlappyOpen, setIsFlappyOpen] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => themeService.getTheme());
   const [showThemeMenu, setShowThemeMenu] = useState<boolean>(false);
 
@@ -261,6 +263,15 @@ export const App: React.FC = () => {
 
           {/* Header Action Badges & Theme Toggle */}
           <div className="flex items-center gap-2">
+            {/* Wood Flight Mini-Game Launcher */}
+            <button
+              onClick={() => setIsFlappyOpen(true)}
+              className={`p-1.5 rounded-xl border ${activeThemeConfig.borderClass} ${activeThemeConfig.cardClass} hover:bg-emerald-400/20 text-emerald-400 flex items-center justify-center transition-all active:scale-90 shadow-sm`}
+              title="Play Wood Flight Mini-Game"
+            >
+              <GamepadIcon size={16} />
+            </button>
+
             {/* Theme Picker Dropdown Trigger */}
             <div className="relative">
               <button
@@ -359,6 +370,7 @@ export const App: React.FC = () => {
                   onOpenMap={() => setActiveTab('map')}
                   onOpenLeaderboard={() => setActiveTab('leaderboard')}
                   onOpenRules={() => setActiveTab('rules')}
+                  onOpenMiniGame={() => setIsFlappyOpen(true)}
                 />
               )}
 
@@ -449,6 +461,10 @@ export const App: React.FC = () => {
           onClose={() => setIsThrowTrackerOpen(false)}
           onSaveThrow={handleSaveThrow}
         />
+      )}
+
+      {isFlappyOpen && (
+        <FlappyDiscGame onClose={() => setIsFlappyOpen(false)} />
       )}
 
       {/* Bottom Sticky Navigation */}

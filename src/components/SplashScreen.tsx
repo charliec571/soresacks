@@ -1,6 +1,6 @@
 import React from 'react';
 import { courseData } from '../data/courseData';
-import { BeerIcon, MapPinIcon, TrophyIcon, UsersIcon, DiscIcon, ChevronRightIcon } from './Icons';
+import { BeerIcon, MapPinIcon, TrophyIcon, UsersIcon, DiscIcon, ChevronRightIcon, GamepadIcon } from './Icons';
 
 interface SplashScreenProps {
   onStartRound: () => void;
@@ -8,6 +8,7 @@ interface SplashScreenProps {
   onOpenMap: () => void;
   onOpenLeaderboard: () => void;
   onOpenRules: () => void;
+  onOpenMiniGame?: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
@@ -15,7 +16,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   onJoinRound,
   onOpenMap,
   onOpenLeaderboard,
-  onOpenRules
+  onOpenRules,
+  onOpenMiniGame
 }) => {
   return (
     <div className="flex flex-col items-center max-w-md mx-auto pb-28 pt-2 px-2 animate-fade-in text-center">
@@ -84,7 +86,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       </div>
 
       {/* 5. Quick Discovery Links */}
-      <div className="grid grid-cols-3 gap-2 w-full mt-4">
+      <div className="grid grid-cols-4 gap-2 w-full mt-4">
         <button
           onClick={onOpenMap}
           className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-95 group shadow"
@@ -93,7 +95,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             <MapPinIcon size={18} />
           </div>
           <span className="text-xs font-black">GPS Map</span>
-          <span className="text-[9px] text-neutral-400">Satellite Caddie</span>
+          <span className="text-[9px] text-neutral-400">Caddie</span>
         </button>
 
         <button
@@ -115,8 +117,21 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             <BeerIcon size={18} />
           </div>
           <span className="text-xs font-black">House Lore</span>
-          <span className="text-[9px] text-neutral-400">Rules & Baskets</span>
+          <span className="text-[9px] text-neutral-400">Rules</span>
         </button>
+
+        {onOpenMiniGame && (
+          <button
+            onClick={onOpenMiniGame}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-95 group shadow"
+          >
+            <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+              <GamepadIcon size={18} />
+            </div>
+            <span className="text-xs font-black">Play</span>
+            <span className="text-[9px] text-neutral-400">Wood Flight</span>
+          </button>
+        )}
       </div>
 
       {/* Footer Course Info */}
