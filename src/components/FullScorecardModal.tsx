@@ -1,6 +1,6 @@
 import React from 'react';
 import { Round } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { CloseIcon } from './Icons';
 
 interface FullScorecardModalProps {
@@ -14,6 +14,8 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
   onClose,
   onSelectHole
 }) => {
+  const layout = getLayout(round.layoutId);
+
   const getCellBg = (strokes: number | undefined, par: number) => {
     if (strokes === undefined) return 'bg-[#0c1f24] text-neutral-600';
     const diff = strokes - par;
@@ -35,7 +37,7 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
               Scorecard Matrix
             </h2>
             <p className="text-xs text-[#d1dfdb]/70">
-              {courseData.name} • 9 Holes • Par {courseData.totalPar}
+              {courseData.name} • {layout.holeCount} Holes ({layout.name}) • Par {layout.totalPar}
             </p>
           </div>
           <button
@@ -52,7 +54,7 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
             <thead>
               <tr className="border-b border-white/10 text-[#d1dfdb]/60 font-extrabold uppercase">
                 <th className="py-2 px-2 text-left sticky left-0 bg-[#132d34] z-10">Hole</th>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <th
                     key={h.number}
                     onClick={() => {
@@ -71,31 +73,31 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
               {/* Par Row */}
               <tr className="border-b border-white/10 text-emerald-400/90 font-bold bg-emerald-950/20">
                 <td className="py-1.5 px-2 text-left sticky left-0 bg-[#132d34] z-10">Par</td>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <td key={h.number} className="py-1.5 px-1 font-bold">
                     {h.par}
                   </td>
                 ))}
-                <td className="py-1.5 px-2 font-black">{courseData.totalPar}</td>
+                <td className="py-1.5 px-2 font-black">{layout.totalPar}</td>
                 <td className="py-1.5 px-2 font-black">E</td>
               </tr>
 
               {/* Distance Row */}
               <tr className="border-b border-white/10 text-neutral-400 text-[10px]">
                 <td className="py-1 px-2 text-left sticky left-0 bg-[#132d34] z-10">Feet</td>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <td key={h.number} className="py-1 px-1">
                     {h.distanceFt}
                   </td>
                 ))}
-                <td className="py-1 px-2 font-bold">{courseData.totalDistanceFt}</td>
+                <td className="py-1 px-2 font-bold">{layout.totalDistanceFt}</td>
                 <td className="py-1 px-2">-</td>
               </tr>
 
               {/* Basket Row */}
               <tr className="border-b border-white/15 text-amber-300 text-[10px] font-bold">
                 <td className="py-1 px-2 text-left sticky left-0 bg-[#132d34] z-10">Basket</td>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <td key={h.number} className="py-1 px-1">
                     B{h.basket.basketNumber}
                   </td>
@@ -110,7 +112,7 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
                 let total = 0;
                 let parForScoredHoles = 0;
                 let scoredCount = 0;
-                courseData.holes.forEach((h) => {
+                layout.holes.forEach((h) => {
                   const s = player.scores[h.number];
                   if (s !== undefined) {
                     total += s;
@@ -130,7 +132,7 @@ export const FullScorecardModal: React.FC<FullScorecardModalProps> = ({
                       <span className="text-white truncate max-w-[85px]">{player.name}</span>
                     </td>
 
-                    {courseData.holes.map((h) => {
+                    {layout.holes.map((h) => {
                       const strokes = player.scores[h.number];
                       return (
                         <td

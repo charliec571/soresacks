@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { PlusIcon, CloseIcon, BeerIcon, ChevronLeftIcon } from './Icons';
+import { PlusIcon, CloseIcon, BeerIcon, ChevronLeftIcon, CheckIcon } from './Icons';
+import { courseData } from '../data/courseData';
 
 interface RoundSetupProps {
-  onStartRound: (playerNames: string[]) => void;
+  onStartRound: (playerNames: string[], layoutId: string) => void;
   onJoinRoom: (roomCode: string) => void;
   initialTab?: 'create' | 'join';
   onBack?: () => void;
@@ -15,6 +16,7 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({
   onBack
 }) => {
   const [players, setPlayers] = useState<string[]>(['Charlie C.', 'Player 2']);
+  const [selectedLayoutId, setSelectedLayoutId] = useState<string>('9-hole');
   const [newPlayerName, setNewPlayerName] = useState('');
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [activeTab, setActiveTab] = useState<'create' | 'join'>(initialTab);
@@ -42,7 +44,7 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({
 
   const handleStart = () => {
     if (players.length > 0) {
-      onStartRound(players);
+      onStartRound(players, selectedLayoutId);
     }
   };
 
@@ -119,8 +121,70 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({
       </div>
 
       {activeTab === 'create' ? (
-        <div className="bg-[#111827] border border-white/10 rounded-3xl p-5 shadow-xl flex flex-col gap-4">
-          <div>
+        <div className="bg-[#111827] border border-white/10 rounded-3xl p-5 shadow-xl flex flex-col gap-5">
+          {/* Layout Selection */}
+          <div className="flex flex-col gap-2.5">
+            <div>
+              <h2 className="text-base font-extrabold text-white">Choose Layout</h2>
+              <p className="text-xs text-neutral-400">Select course configuration for this round.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* 9-Hole Layout */}
+              <button
+                type="button"
+                onClick={() => setSelectedLayoutId('9-hole')}
+                className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
+                  selectedLayoutId === '9-hole'
+                    ? 'bg-emerald-500/15 border-emerald-400 ring-2 ring-emerald-400/40 shadow-md'
+                    : 'bg-[#090d16] hover:bg-white/5 border-white/10 text-neutral-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-black text-sm text-white">9-Hole Loop</span>
+                  {selectedLayoutId === '9-hole' && (
+                    <span className="w-4 h-4 rounded-full bg-emerald-400 text-neutral-950 flex items-center justify-center text-[10px] font-black">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] font-extrabold text-emerald-400">
+                  Par 28 • 2,145 ft
+                </div>
+                <p className="text-[10px] text-neutral-400 font-medium mt-1 leading-snug">
+                  Full 9 holes including 3 Safari holes (7, 8, 9)
+                </p>
+              </button>
+
+              {/* 6-Hole Layout (UDisc) */}
+              <button
+                type="button"
+                onClick={() => setSelectedLayoutId('6-hole')}
+                className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
+                  selectedLayoutId === '6-hole'
+                    ? 'bg-emerald-500/15 border-emerald-400 ring-2 ring-emerald-400/40 shadow-md'
+                    : 'bg-[#090d16] hover:bg-white/5 border-white/10 text-neutral-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-black text-sm text-white">6-Hole Classic</span>
+                  {selectedLayoutId === '6-hole' && (
+                    <span className="w-4 h-4 rounded-full bg-emerald-400 text-neutral-950 flex items-center justify-center text-[10px] font-black">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-teal-400">
+                  <span>Par 18 • 1,460 ft</span>
+                </div>
+                <p className="text-[10px] text-neutral-400 font-medium mt-1 leading-snug">
+                  Official UDisc layout (#163451) • 3 baskets × 2 approaches
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-1 border-t border-white/10">
             <h2 className="text-base font-extrabold text-white">Who's on the Card?</h2>
             <p className="text-xs text-neutral-400">Add players to track scores together live.</p>
           </div>
@@ -195,7 +259,9 @@ export const RoundSetup: React.FC<RoundSetupProps> = ({
             onClick={handleStart}
             className="w-full mt-2 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 text-neutral-950 font-black text-base shadow-xl shadow-emerald-950/40 border border-emerald-400 transition-all flex items-center justify-center gap-2"
           >
-            <span>Tee Off ({players.length} Player{players.length > 1 ? 's' : ''})</span>
+            <span>
+              Tee Off • {selectedLayoutId === '6-hole' ? '6 Holes' : '9 Holes'} ({players.length} Player{players.length > 1 ? 's' : ''})
+            </span>
           </button>
         </div>
       ) : (

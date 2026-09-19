@@ -6,7 +6,7 @@ import {
   CtpWinner,
   MeasuredThrow
 } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { supabase } from './supabaseClient';
 
 const ACTIVE_ROUND_KEY = 'sore_sacks_active_round';
@@ -154,8 +154,9 @@ export const syncService = {
     }
   },
 
-  createRound(playerNames: string[]): Round {
+  createRound(playerNames: string[], layoutId: string = '9-hole'): Round {
     const code = generateRoomCode();
+    const layout = getLayout(layoutId);
     const players: Player[] = playerNames.map((name, idx) => {
       return {
         id: 'p_' + Math.random().toString(36).substring(2, 9),
@@ -171,6 +172,8 @@ export const syncService = {
       id: 'round_' + Date.now(),
       roomCode: code,
       courseName: courseData.name,
+      layoutId: layout.id,
+      layoutName: layout.name,
       date: new Date().toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -314,7 +317,8 @@ export const syncService = {
   setCurrentHole(holeNumber: number): Round | null {
     const round = this.getStoredRound();
     if (!round) return null;
-    round.currentHole = Math.max(1, Math.min(courseData.holeCount, holeNumber));
+    const layout = getLayout(round.layoutId);
+    round.currentHole = Math.max(1, Math.min(layout.holeCount, holeNumber));
     this.saveRound(round);
     return round;
   },
@@ -336,6 +340,7 @@ export const syncService = {
 
       // Record to leaderboard
       const leaderboard = this.getLeaderboard();
+      const layout = getLayout(round.layoutId);
       round.players.forEach((p) => {
         let total = 0;
         let birdies = 0;
@@ -344,7 +349,7 @@ export const syncService = {
         let aces = 0;
         const holeScoresList: number[] = [];
 
-        courseData.holes.forEach((h) => {
+        layout.holes.forEach((h) => {
           const s = p.scores[h.number] ?? h.par;
           total += s;
           holeScoresList.push(s);
@@ -354,11 +359,13 @@ export const syncService = {
           else if (s > h.par) bogeys++;
         });
 
-        const scoreToPar = total - courseData.totalPar;
+        const scoreToPar = total - layout.totalPar;
 
         leaderboard.push({
           id: 'lb_' + Math.random().toString(36).substring(2, 9),
           roundId: round.id,
+          layoutId: round.layoutId,
+          layoutName: layout.name,
           date: round.date,
           playerName: p.name,
           totalScore: total,

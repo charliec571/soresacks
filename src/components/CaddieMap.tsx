@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { HoleData, GPSCoord, Round } from '../types';
 import { NavigationIcon, MapPinIcon, InfoIcon, DiscIcon, UsersIcon } from './Icons';
 import { syncService } from '../services/syncService';
@@ -47,9 +47,10 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({
   const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite');
 
   const lastBroadcastRef = useRef<number>(0);
+  const layout = getLayout(round?.layoutId);
 
   const currentHole: HoleData =
-    courseData.holes.find((h) => h.number === currentHoleNumber) || courseData.holes[0];
+    layout.holes.find((h) => h.number === currentHoleNumber) || layout.holes[0];
 
   // Calculate distance from user to current basket
   const distanceToBasket = userLocation
@@ -130,7 +131,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({
     const isAllMode = viewMode === 'all';
 
     // 1. Draw Fairways / Flight Paths
-    courseData.holes.forEach((hole) => {
+    layout.holes.forEach((hole) => {
       const isCurrentHole = hole.number === currentHoleNumber;
 
       const pathCoords: [number, number][] = [
@@ -227,8 +228,8 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({
       marker.addTo(activeGroup);
     });
 
-    // 3. Draw All Tees (T1 - T9)
-    courseData.holes.forEach((hole) => {
+    // 3. Draw All Tees
+    layout.holes.forEach((hole) => {
       const isCurrentTee = hole.number === currentHoleNumber;
 
       const teeIconHtml = `
@@ -259,7 +260,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({
     if (isAllMode) {
       // Fit to entire course property coordinates
       const allCoords: [number, number][] = [];
-      courseData.holes.forEach((h) => {
+      layout.holes.forEach((h) => {
         allCoords.push([h.tee.lat, h.tee.lng]);
         allCoords.push([h.basket.lat, h.basket.lng]);
       });
@@ -426,7 +427,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({
   const centerOnCourse = () => {
     if (!mapRef.current) return;
     const allCoords: [number, number][] = [];
-    courseData.holes.forEach((h) => {
+    layout.holes.forEach((h) => {
       allCoords.push([h.tee.lat, h.tee.lng]);
       allCoords.push([h.basket.lat, h.basket.lng]);
     });
@@ -615,7 +616,7 @@ export const CaddieMap: React.FC<CaddieMapProps> = ({
       {/* Bottom Hole Selector Carousel */}
       <div className="absolute bottom-2 left-2 right-2 z-[1000] bg-[#111827]/95 backdrop-blur-md border border-white/15 rounded-2xl p-2 shadow-2xl">
         <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {courseData.holes.map((h) => {
+          {layout.holes.map((h) => {
             const isSelected = h.number === currentHoleNumber;
             return (
               <button

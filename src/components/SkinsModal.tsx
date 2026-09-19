@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Round, SkinsConfig } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { calculateSkins } from '../utils/skins';
 import { CloseIcon, TrophyIcon, BeerIcon, CheckIcon } from './Icons';
 
@@ -18,6 +18,7 @@ export const SkinsModal: React.FC<SkinsModalProps> = ({
   onMarkCtp
 }) => {
   const [activeTab, setActiveTab] = useState<'standings' | 'ctp' | 'settings'>('standings');
+  const layout = getLayout(round.layoutId);
   const skinsData = calculateSkins(round);
 
   const config = round.skinsConfig || {
@@ -55,7 +56,7 @@ export const SkinsModal: React.FC<SkinsModalProps> = ({
                 Skins Game &amp; CTP
               </h2>
               <p className="text-[11px] text-neutral-400 font-bold">
-                {round.courseName} • 9 Holes • Live Match
+                {round.courseName} • {layout.holeCount} Holes ({layout.name}) • Live Match
               </p>
             </div>
           </div>
@@ -189,7 +190,7 @@ export const SkinsModal: React.FC<SkinsModalProps> = ({
                     </thead>
                     <tbody>
                       {skinsData.results.map((r) => {
-                        const hole = courseData.holes.find((h) => h.number === r.holeNumber);
+                        const hole = layout.holes.find((h) => h.number === r.holeNumber);
                         return (
                           <tr key={r.holeNumber} className="border-b border-white/5">
                             <td className="p-2.5 font-bold text-white">
@@ -230,13 +231,13 @@ export const SkinsModal: React.FC<SkinsModalProps> = ({
                 <p className="font-bold text-white mb-1">🎯 Closest to Pin (CTP)</p>
                 <p className="text-[11px] text-neutral-400">
                   Mark which player parked their drive closest to the pin on each hole.
-                  Special course favorites: <strong className="text-emerald-400">Hole 3 (161 ft)</strong> and{' '}
-                  <strong className="text-emerald-400">Hole 7 (170 ft)</strong>!
+                  Special course favorite: <strong className="text-emerald-400">Hole 3 (161 ft)</strong>
+                  {layout.holeCount >= 7 ? <span> and <strong className="text-emerald-400">Hole 7 (170 ft)</strong></span> : null}!
                 </p>
               </div>
 
               <div className="flex flex-col gap-2">
-                {courseData.holes.map((hole) => {
+                {layout.holes.map((hole) => {
                   const currentCtp = round.ctpWinners?.[hole.number];
                   const isShortHole = hole.number === 3 || hole.number === 7;
 

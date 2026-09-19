@@ -37,6 +37,16 @@ export interface HoleData {
   isSafari?: boolean;
 }
 
+export interface CourseLayout {
+  id: string; // '9-hole' | '6-hole'
+  name: string; // '9 Hole' | '6 Hole'
+  description: string;
+  holeCount: number;
+  totalPar: number;
+  totalDistanceFt: number;
+  holes: HoleData[];
+}
+
 export interface CourseData {
   id: string;
   name: string;
@@ -48,6 +58,7 @@ export interface CourseData {
   basketCount: number;
   baskets: BasketLocation[];
   holes: HoleData[];
+  layouts?: CourseLayout[];
   rules: {
     access: string;
     byob: boolean;
@@ -122,6 +133,8 @@ export interface Round {
   id: string;
   roomCode: string;
   courseName: string;
+  layoutId?: string; // '9-hole' | '6-hole'
+  layoutName?: string; // '9 Hole' | '6 Hole'
   date: string;
   startedAt: number;
   completedAt?: number;
@@ -137,6 +150,8 @@ export interface Round {
 export interface LeaderboardEntry {
   id: string;
   roundId: string;
+  layoutId?: string;
+  layoutName?: string;
   date: string;
   playerName: string;
   totalScore: number;

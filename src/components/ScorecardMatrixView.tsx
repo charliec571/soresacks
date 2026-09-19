@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Round } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { DiscIcon, FlagIcon, CloseIcon } from './Icons';
 
 interface ScorecardMatrixViewProps {
@@ -17,6 +17,8 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
   onCancelRound
 }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+  const layout = getLayout(round?.layoutId);
+
   const getCellBg = (strokes: number | undefined, par: number) => {
     if (strokes === undefined) return 'bg-[#090d16] text-neutral-600';
     const diff = strokes - par;
@@ -41,7 +43,7 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
               Scorecard Matrix
             </h2>
             <p className="text-[11px] text-neutral-400 font-bold">
-              {courseData.name} • 9 Holes • Par {courseData.totalPar}
+              {courseData.name} • {layout.holeCount} Holes ({layout.name}) • Par {layout.totalPar}
             </p>
           </div>
         </div>
@@ -64,7 +66,7 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
             <thead>
               <tr className="border-b border-white/10 text-neutral-400 font-extrabold uppercase text-[11px]">
                 <th className="py-2.5 px-2 text-left sticky left-0 bg-[#111827] z-10">Hole</th>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <th
                     key={h.number}
                     onClick={() => onSelectHole(h.number)}
@@ -83,31 +85,31 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
                 <td className="py-1.5 px-2 text-left sticky left-0 bg-[#111827] z-10 text-emerald-400">
                   Par
                 </td>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <td key={h.number} className="py-1.5 px-1 font-extrabold">
                     {h.par}
                   </td>
                 ))}
-                <td className="py-1.5 px-2 font-black">{courseData.totalPar}</td>
+                <td className="py-1.5 px-2 font-black">{layout.totalPar}</td>
                 <td className="py-1.5 px-2 font-black">E</td>
               </tr>
 
               {/* Distance Row */}
               <tr className="border-b border-white/10 text-neutral-400 text-[10px]">
                 <td className="py-1 px-2 text-left sticky left-0 bg-[#111827] z-10">Feet</td>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <td key={h.number} className="py-1 px-1">
                     {h.distanceFt}
                   </td>
                 ))}
-                <td className="py-1 px-2 font-bold">{courseData.totalDistanceFt}</td>
+                <td className="py-1 px-2 font-bold">{layout.totalDistanceFt}</td>
                 <td className="py-1 px-2">-</td>
               </tr>
 
               {/* Basket Row */}
               <tr className="border-b border-white/15 text-amber-300 text-[10px] font-bold">
                 <td className="py-1 px-2 text-left sticky left-0 bg-[#111827] z-10">Basket</td>
-                {courseData.holes.map((h) => (
+                {layout.holes.map((h) => (
                   <td key={h.number} className="py-1 px-1">
                     B{h.basket.basketNumber}
                   </td>
@@ -123,7 +125,7 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
                   let total = 0;
                   let parForScoredHoles = 0;
                   let scoredCount = 0;
-                  courseData.holes.forEach((h) => {
+                  layout.holes.forEach((h) => {
                     const s = player.scores[h.number];
                     if (s !== undefined) {
                       total += s;
@@ -143,7 +145,7 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
                         <span className="text-white truncate max-w-[80px]">{player.name}</span>
                       </td>
 
-                      {courseData.holes.map((h) => {
+                      {layout.holes.map((h) => {
                         const strokes = player.scores[h.number];
                         return (
                           <td
@@ -194,7 +196,7 @@ export const ScorecardMatrixView: React.FC<ScorecardMatrixViewProps> = ({
                   <td className="py-3 px-2 text-left font-bold sticky left-0 bg-[#111827] z-10 text-neutral-400">
                     Your Score
                   </td>
-                  {courseData.holes.map((h) => (
+                  {layout.holes.map((h) => (
                     <td key={h.number} className="py-3 px-1 text-neutral-600 font-bold">
                       -
                     </td>

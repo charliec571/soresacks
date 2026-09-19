@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Round, GPSCoord, MeasuredThrow } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { CloseIcon, NavigationIcon, CheckIcon, DiscIcon } from './Icons';
 
 interface ThrowTrackerModalProps {
@@ -32,7 +32,8 @@ export const ThrowTrackerModal: React.FC<ThrowTrackerModalProps> = ({
   onClose,
   onSaveThrow
 }) => {
-  const hole = courseData.holes.find((h) => h.number === currentHoleNumber) || courseData.holes[0];
+  const layout = getLayout(round.layoutId);
+  const hole = layout.holes.find((h) => h.number === currentHoleNumber) || layout.holes[0];
 
   // Starting location defaults to the official hole tee coordinates
   const [startPoint, setStartPoint] = useState<GPSCoord>({

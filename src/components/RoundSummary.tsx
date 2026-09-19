@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Round } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { calculateSkins } from '../utils/skins';
 import { TrophyIcon, ShareIcon, CheckIcon, BeerIcon, DiscIcon } from './Icons';
 
@@ -16,6 +16,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
   onViewLeaderboard
 }) => {
   const [copied, setCopied] = useState(false);
+  const layout = getLayout(round.layoutId);
 
   // Compute final player stroke rankings
   const rankedPlayers = round.players
@@ -26,7 +27,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
       let bogeys = 0;
       let aces = 0;
 
-      courseData.holes.forEach((h) => {
+      layout.holes.forEach((h) => {
         const s = p.scores[h.number] ?? h.par;
         total += s;
         if (s === 1) aces++;
@@ -35,7 +36,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
         else if (s > h.par) bogeys++;
       });
 
-      const scoreToPar = total - courseData.totalPar;
+      const scoreToPar = total - layout.totalPar;
       return {
         player: p,
         total,
@@ -66,7 +67,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
 
   const handleCopySummary = () => {
     let text = `🍻 Sore Sacks & Six Packs - Round Recap!\n`;
-    text += `📅 ${round.date} • Par ${courseData.totalPar}\n\n`;
+    text += `📅 ${round.date} • ${layout.holeCount} Holes (${layout.name}) • Par ${layout.totalPar}\n\n`;
     text += `🏆 STROKE PLAY STANDINGS:\n`;
 
     const medals = ['🥇', '🥈', '🥉', '4th', '5th', '6th', '7th', '8th'];
@@ -99,7 +100,7 @@ export const RoundSummary: React.FC<RoundSummaryProps> = ({
       text += `• ${longestDrive.playerName}: ${longestDrive.distanceFt} ft (Hole ${longestDrive.holeNumber}${longestDrive.discName ? ` w/ ${longestDrive.discName}` : ''})\n`;
     }
 
-    text += `\nPrivate 9-hole layout • 3 Axiom Baskets • Fort Wayne, IN`;
+    text += `\nPrivate ${layout.holeCount}-hole layout • 3 Axiom Baskets • Fort Wayne, IN`;
 
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);

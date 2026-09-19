@@ -139,7 +139,7 @@ export const Leaderboard: React.FC = () => {
                         )}
                       </div>
                       <span className="text-[11px] text-neutral-400">
-                        {item.date} • {item.birdies} Birdie{item.birdies !== 1 ? 's' : ''}
+                        {item.date} • {item.layoutName ? `${item.layoutName} • ` : ''}{item.birdies} Birdie{item.birdies !== 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>

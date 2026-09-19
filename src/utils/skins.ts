@@ -1,5 +1,5 @@
 import { Round, SkinResult } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 
 export interface PlayerSkinsSummary {
   playerId: string;
@@ -26,6 +26,7 @@ export function calculateSkins(round: Round): SkinsCalculation {
     carryovers: true
   };
 
+  const layout = getLayout(round.layoutId);
   const results: SkinResult[] = [];
   const playerWins: Record<string, { count: number; holes: number[] }> = {};
 
@@ -35,7 +36,7 @@ export function calculateSkins(round: Round): SkinsCalculation {
 
   let accumulatedPot = 1;
 
-  courseData.holes.forEach((hole) => {
+  layout.holes.forEach((hole) => {
     const holeNum = hole.number;
 
     // Check if any player has scored this hole
@@ -150,7 +151,7 @@ export function calculateSkins(round: Round): SkinsCalculation {
     results,
     playerSummaries,
     currentPot: accumulatedPot,
-    totalSkinsAvailable: courseData.holeCount,
+    totalSkinsAvailable: layout.holeCount,
     totalSkinsClaimed
   };
 }

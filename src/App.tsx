@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Round, SkinsConfig, MeasuredThrow } from './types';
-import { courseData } from './data/courseData';
+import { courseData, getLayout } from './data/courseData';
 import { syncService } from './services/syncService';
 import { themeService, ThemeId, THEMES } from './services/themeService';
 import { Navbar, NavTab } from './components/Navbar';
@@ -77,10 +77,13 @@ export const App: React.FC = () => {
         });
       } else {
         const active = syncService.getStoredRound();
-        if (active && active.roomCode) {
-          syncService.fetchLatestCloudRound(active.roomCode).then((r) => {
-            if (r) setRound({ ...r });
-          });
+        if (active) {
+          setRound({ ...active });
+          if (active.roomCode) {
+            syncService.fetchLatestCloudRound(active.roomCode).then((r) => {
+              if (r) setRound({ ...r });
+            });
+          }
         }
       }
     }
@@ -112,8 +115,8 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleStartRound = (playerNames: string[]) => {
-    const newRound = syncService.createRound(playerNames);
+  const handleStartRound = (playerNames: string[], layoutId: string = '9-hole') => {
+    const newRound = syncService.createRound(playerNames, layoutId);
     setRound({ ...newRound });
     setSelectedHole(1);
     setShowSetup(false);
@@ -251,7 +254,7 @@ export const App: React.FC = () => {
                 Sore Sacks &amp; Six Packs
               </h1>
               <p className={`text-[10px] ${activeThemeConfig.textSecondary} font-bold leading-none mt-0.5`}>
-                Fort Wayne, IN • Par {courseData.totalPar}
+                Fort Wayne, IN • {round ? `${getLayout(round.layoutId).name} (Par ${getLayout(round.layoutId).totalPar})` : `Par ${courseData.totalPar}`}
               </p>
             </div>
           </div>

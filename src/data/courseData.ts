@@ -282,5 +282,40 @@ export const courseData: CourseData = {
       'Respect the neighbors and private property lines at all times.'
     ],
     history: 'The Honorable Chris Wilson has been so kind as to contribute the baskets for this dream!'
-  }
+  },
+  layouts: [
+    {
+      id: '9-hole',
+      name: '9 Hole',
+      description: 'Full 9-hole loop including the 3 Safari holes (Par 28, 2,145 ft).',
+      holeCount: 9,
+      totalPar: 28,
+      totalDistanceFt: 2145,
+      holes: [] // populated below
+    },
+    {
+      id: '6-hole',
+      name: '6 Hole',
+      description: 'Official UDisc 6-hole layout (Layout #163451) — 3 baskets with 2 approaches each (Par 18, 1,460 ft).',
+      holeCount: 6,
+      totalPar: 18,
+      totalDistanceFt: 1460,
+      holes: [] // populated below
+    }
+  ]
 };
+
+// Wire holes into layouts
+if (courseData.layouts) {
+  courseData.layouts[0].holes = courseData.holes;
+  courseData.layouts[1].holes = courseData.holes.slice(0, 6);
+}
+
+// Helper to get active layout holes given a layoutId or a round
+export function getLayout(layoutId?: string) {
+  if (layoutId === '6-hole') {
+    return courseData.layouts![1];
+  }
+  return courseData.layouts![0];
+}
+

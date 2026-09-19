@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Round } from '../types';
-import { courseData } from '../data/courseData';
+import { courseData, getLayout } from '../data/courseData';
 import { calculateSkins } from '../utils/skins';
 import {
   ChevronLeftIcon,
@@ -37,8 +37,9 @@ export const Scorecard: React.FC<ScorecardProps> = ({
   onOpenThrowTracker,
   onMarkCtp
 }) => {
+  const layout = getLayout(round.layoutId);
   const currentHole =
-    courseData.holes.find((h) => h.number === round.currentHole) || courseData.holes[0];
+    layout.holes.find((h) => h.number === round.currentHole) || layout.holes[0];
 
   const [showCtpPicker, setShowCtpPicker] = useState<boolean>(false);
 
@@ -52,7 +53,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
   };
 
   const handleNextHole = () => {
-    if (round.currentHole < courseData.holeCount) {
+    if (round.currentHole < layout.holeCount) {
       onSelectHole(round.currentHole + 1);
     } else {
       onFinishRound();
@@ -78,7 +79,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
     let totalScore = 0;
     let parForScoredHoles = 0;
     let scoredHolesCount = 0;
-    courseData.holes.forEach((h) => {
+    layout.holes.forEach((h) => {
       const s = p.scores[h.number];
       if (s !== undefined) {
         totalScore += s;
@@ -161,10 +162,10 @@ export const Scorecard: React.FC<ScorecardProps> = ({
 
   return (
     <div className="flex flex-col gap-2.5 pb-28 animate-fade-in">
-      {/* 1. Hole Quick-Select Pill Carousel (H1 to H9) */}
+      {/* 1. Hole Quick-Select Pill Carousel */}
       <div className="bg-[#111827] border border-white/10 rounded-2xl p-1.5 shadow-md">
         <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
-          {courseData.holes.map((h) => {
+          {layout.holes.map((h) => {
             const isCurrent = h.number === round.currentHole;
             const allScored = round.players.every((p) => p.scores[h.number] !== undefined);
             const holeHasCtp = round.ctpWinners?.[h.number];
@@ -481,7 +482,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
 
       {/* 4. Prominent NEXT HOLE Action Bar */}
       <div className="flex flex-col gap-2 pt-2">
-        {round.currentHole < courseData.holeCount ? (
+        {round.currentHole < layout.holeCount ? (
           <button
             onClick={handleNextHole}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-neutral-950 font-black text-base shadow-xl shadow-emerald-900/30 border border-emerald-400 flex items-center justify-center gap-2 transition-transform active:scale-98"
@@ -495,7 +496,7 @@ export const Scorecard: React.FC<ScorecardProps> = ({
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-[#f97316] hover:from-amber-300 hover:to-[#ea580c] text-neutral-950 font-black text-base shadow-xl shadow-amber-900/40 border border-amber-300 flex items-center justify-center gap-2 transition-transform active:scale-98 animate-pulse"
           >
             <TrophyIcon size={20} />
-            <span>Finish 9-Hole Round &amp; View Summary</span>
+            <span>Finish {layout.holeCount}-Hole Round &amp; View Summary</span>
           </button>
         )}
 
