@@ -8,7 +8,6 @@ interface SplashScreenProps {
   onOpenMap: () => void;
   onOpenLeaderboard: () => void;
   onOpenRules: () => void;
-  onOpenMiniGame?: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
@@ -16,8 +15,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   onJoinRound,
   onOpenMap,
   onOpenLeaderboard,
-  onOpenRules,
-  onOpenMiniGame
+  onOpenRules
 }) => {
   return (
     <div className="flex flex-col items-center max-w-md mx-auto pb-28 pt-2 px-2 animate-fade-in text-center">
@@ -83,16 +81,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           <UsersIcon size={18} className="text-emerald-400" />
           <span>Join Live Card (Room Code / QR)</span>
         </button>
-
-        {onOpenMiniGame && (
-          <button
-            onClick={onOpenMiniGame}
-            className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-black text-sm border border-amber-400/40 flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm"
-          >
-            <span>🎮</span>
-            <span>Play "Backyard Chains" Mini-Game</span>
-          </button>
-        )}
       </div>
 
       {/* 5. Quick Discovery Links */}
