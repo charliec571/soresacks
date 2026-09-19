@@ -63,7 +63,7 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
     angle: 0,
     spin: 0,
     distanceRemaining: COURSE_DISTANCE,
-    speed: 3.2,
+    speed: 2.4,
     trees: [],
     basket: null,
     particles: [],
@@ -95,11 +95,11 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
     gameRef.current = {
       discX: canvas.width * 0.25,
       discY: canvas.height * 0.45,
-      vy: -3.5,
+      vy: -2.5,
       angle: 0,
       spin: 0,
       distanceRemaining: COURSE_DISTANCE,
-      speed: 3.4,
+      speed: 2.4,
       trees: [],
       basket: null,
       particles: [],
@@ -121,7 +121,7 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
       return;
     }
     if (gameState === 'playing') {
-      gameRef.current.vy = -6.8;
+      gameRef.current.vy = -5.2;
       flappyAudio.playFlap();
     }
   }, [gameState, startGame]);
@@ -253,26 +253,26 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
 
       // 2. Game Logic & Tree Spawning
       if (gameState === 'playing') {
-        // Update flight distance remaining
-        game.distanceRemaining = Math.max(0, game.distanceRemaining - game.speed * dt * 5.2);
+        // Update flight distance remaining (tuned for 2.4 speed)
+        game.distanceRemaining = Math.max(0, game.distanceRemaining - game.speed * dt * 4.5);
         setDistanceRemaining(Math.round(game.distanceRemaining));
 
         // Spawn trees while distance > 35 FT
         if (game.distanceRemaining > 35) {
           treeSpawnTimer += dt;
-          if (treeSpawnTimer > 1.6) {
+          if (treeSpawnTimer > 2.0) {
             treeSpawnTimer = 0;
-            const gap = 165; // vertical flight window
-            const minHeight = 60;
+            const gap = 220; // Expanded vertical flight window (was 165)
+            const minHeight = 50;
             const maxHeight = groundY - gap - minHeight;
             const topHeight = Math.floor(Math.random() * (maxHeight - minHeight)) + minHeight;
             const bottomY = topHeight + gap;
 
             game.trees.push({
-              x: width + 20,
+              x: width + 30,
               topHeight,
               bottomY,
-              width: 58,
+              width: 72,
               passed: false
             });
           }
@@ -281,25 +281,25 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
           game.basket = {
             active: true,
             x: width + 60,
-            y: groundY - 85,
+            y: groundY - 110,
             caught: false
           };
         }
 
-        // Disc Physics (Gravity & Tilt)
-        game.vy += 0.38; // gravity
+        // Disc Physics (Gentler Floatier Gravity & Tilt)
+        game.vy = Math.min(6.5, game.vy + 0.26); // gentle gravity (was 0.38)
         game.discY += game.vy;
         game.spin += 0.35;
         // Tilt nose up when climbing, nose down when diving
         game.angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, game.vy * 0.08));
 
         // Vapor trail
-        game.trail.unshift({ x: game.discX - 18, y: game.discY, alpha: 0.7 });
-        if (game.trail.length > 8) game.trail.pop();
+        game.trail.unshift({ x: game.discX - 26, y: game.discY, alpha: 0.75 });
+        if (game.trail.length > 10) game.trail.pop();
 
         // Floor / Ceiling bounds collision
-        if (game.discY >= groundY - 10) {
-          game.discY = groundY - 10;
+        if (game.discY >= groundY - 12) {
+          game.discY = groundY - 12;
           flappyAudio.playWoodHit();
           game.screenShake = 1;
           setGameState('gameover');
@@ -315,8 +315,8 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
         }
       }
 
-      // 3. Move & Draw Trees
-      const discR = 20; // collision radius
+      // 3. Move & Draw Trees (Zoomed in & Richer Visuals)
+      const discR = 14; // forgiving collision radius (looks 34px wide, but generous 14px hitbox)
       for (let i = game.trees.length - 1; i >= 0; i--) {
         const tree = game.trees[i];
         if (gameState === 'playing') {
@@ -325,37 +325,37 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
 
         // Draw Top Branch (hanging from top)
         ctx.fillStyle = '#1e1b18'; // Wood branch
-        ctx.fillRect(tree.x + 8, 0, tree.width - 16, tree.topHeight);
-        // Leafy canopy cluster
+        ctx.fillRect(tree.x + 12, 0, tree.width - 24, tree.topHeight);
+        // Leafy canopy cluster (larger zoomed-in foliage)
         ctx.fillStyle = '#10b981';
         ctx.beginPath();
-        ctx.arc(tree.x + tree.width / 2, tree.topHeight, 34, 0, Math.PI * 2);
-        ctx.arc(tree.x + 12, tree.topHeight - 12, 26, 0, Math.PI * 2);
-        ctx.arc(tree.x + tree.width - 12, tree.topHeight - 12, 26, 0, Math.PI * 2);
+        ctx.arc(tree.x + tree.width / 2, tree.topHeight, 46, 0, Math.PI * 2);
+        ctx.arc(tree.x + 14, tree.topHeight - 16, 36, 0, Math.PI * 2);
+        ctx.arc(tree.x + tree.width - 14, tree.topHeight - 16, 36, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw Bottom Trunk (rising from ground)
         ctx.fillStyle = '#292524'; // Bark trunk
-        ctx.fillRect(tree.x + 8, tree.bottomY, tree.width - 16, groundY - tree.bottomY);
+        ctx.fillRect(tree.x + 12, tree.bottomY, tree.width - 24, groundY - tree.bottomY);
         // Leafy bush around gap entrance
         ctx.fillStyle = '#059669';
         ctx.beginPath();
-        ctx.arc(tree.x + tree.width / 2, tree.bottomY, 32, 0, Math.PI * 2);
+        ctx.arc(tree.x + tree.width / 2, tree.bottomY, 44, 0, Math.PI * 2);
         ctx.fill();
 
         // Tree wood detail lines
         ctx.strokeStyle = '#44403c';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(tree.x + 20, tree.bottomY + 15);
-        ctx.lineTo(tree.x + 20, groundY);
+        ctx.moveTo(tree.x + 24, tree.bottomY + 20);
+        ctx.lineTo(tree.x + 24, groundY);
         ctx.stroke();
 
-        // Collision Check with Disc
+        // Forgiving Collision Check with Disc
         if (gameState === 'playing') {
-          const inTreeX = game.discX + discR > tree.x && game.discX - discR < tree.x + tree.width;
-          const hitTop = game.discY - discR < tree.topHeight;
-          const hitBottom = game.discY + discR > tree.bottomY;
+          const inTreeX = game.discX + discR > tree.x + 10 && game.discX - discR < tree.x + tree.width - 10;
+          const hitTop = game.discY - discR < tree.topHeight - 6; // leaf padding
+          const hitBottom = game.discY + discR > tree.bottomY + 6;
 
           if (inTreeX && (hitTop || hitBottom)) {
             flappyAudio.playWoodHit();
@@ -370,12 +370,12 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
         }
 
         // Remove offscreen trees
-        if (tree.x + tree.width < -40) {
+        if (tree.x + tree.width < -60) {
           game.trees.splice(i, 1);
         }
       }
 
-      // 4. Move & Draw Axiom Basket at Finish Line
+      // 4. Move & Draw Axiom Basket at Finish Line (Zoomed-in Scale)
       if (game.basket) {
         if (gameState === 'playing' && !game.basket.caught) {
           game.basket.x -= game.speed;
@@ -386,45 +386,45 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
 
         // Pole
         ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(bx - 3, by, 6, 85);
+        ctx.fillRect(bx - 4, by, 8, 110);
 
         // Yellow / Amber Band
         ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(bx - 32, by, 64, 16);
+        ctx.fillRect(bx - 42, by, 84, 20);
         ctx.strokeStyle = '#d97706';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(bx - 32, by, 64, 16);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx - 42, by, 84, 20);
 
         // Metal Chains
         ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 2;
-        for (let c = -24; c <= 24; c += 8) {
+        ctx.lineWidth = 2.5;
+        for (let c = -32; c <= 32; c += 8) {
           ctx.beginPath();
-          ctx.moveTo(bx + c, by + 16);
-          ctx.lineTo(bx + c * 0.4, by + 52);
+          ctx.moveTo(bx + c, by + 20);
+          ctx.lineTo(bx + c * 0.45, by + 68);
           ctx.stroke();
         }
 
         // Lower Basket Cage
         ctx.fillStyle = '#334155';
-        ctx.fillRect(bx - 35, by + 52, 70, 26);
+        ctx.fillRect(bx - 46, by + 68, 92, 34);
         ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(bx - 35, by + 52, 70, 2);
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(bx - 46, by + 68, 92, 3);
 
         // Check if Disc enters the chains!
         if (gameState === 'playing' && !game.basket.caught) {
           const dx = Math.abs(game.discX - bx);
-          const dy = game.discY - (by + 34);
+          const dy = game.discY - (by + 44);
 
-          if (dx < 30 && Math.abs(dy) < 32) {
+          if (dx < 42 && Math.abs(dy) < 40) {
             game.basket.caught = true;
             game.vy = 0;
             game.discX = bx;
-            game.discY = by + 48; // drop into tray
+            game.discY = by + 64; // drop cleanly into tray
             flappyAudio.playChains();
             flappyAudio.playVictory();
-            spawnAceConfetti(bx, by + 30);
+            spawnAceConfetti(bx, by + 40);
             setGameState('ace');
 
             const nextAces = totalAces + 1;
@@ -436,14 +436,14 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
 
       // 5. Draw Vapor Trail
       game.trail.forEach((t) => {
-        ctx.fillStyle = `rgba(6, 182, 212, ${t.alpha * 0.4})`;
+        ctx.fillStyle = `rgba(6, 182, 212, ${t.alpha * 0.45})`;
         ctx.beginPath();
-        ctx.arc(t.x, t.y, 10 * t.alpha, 0, Math.PI * 2);
+        ctx.arc(t.x, t.y, 14 * t.alpha, 0, Math.PI * 2);
         ctx.fill();
-        t.alpha -= 0.05;
+        t.alpha -= 0.04;
       });
 
-      // 6. Draw Spinning Disc (Side Profile View)
+      // 6. Draw Spinning Disc (Zoomed-in Side Profile View)
       ctx.save();
       ctx.translate(game.discX, game.discY);
       ctx.rotate(game.angle);
@@ -451,25 +451,25 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
       // Disc Shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
       ctx.beginPath();
-      ctx.ellipse(0, 18, 22, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 24, 30, 6, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Outer Axiom Gyro Rim (Bright Orange)
+      // Outer Axiom Gyro Rim (Bright Orange, larger scale)
       ctx.fillStyle = '#ea580c';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 24, 8, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 34, 11, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Inner Flight Plate (Vivid Cyan)
       ctx.fillStyle = '#06b6d4';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 18, 5.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 25, 7.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Center hot stamp foil
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 6, 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 9, 3, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
