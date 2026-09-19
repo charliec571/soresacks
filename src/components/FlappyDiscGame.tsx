@@ -63,7 +63,7 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
     angle: 0,
     spin: 0,
     distanceRemaining: COURSE_DISTANCE,
-    speed: 3.3,
+    speed: 4.0,
     trees: [],
     basket: null,
     particles: [],
@@ -95,11 +95,11 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
     gameRef.current = {
       discX: canvas.width * 0.25,
       discY: canvas.height * 0.45,
-      vy: -3.0,
+      vy: -3.2,
       angle: 0,
       spin: 0,
       distanceRemaining: COURSE_DISTANCE,
-      speed: 3.3,
+      speed: 4.0,
       trees: [],
       basket: null,
       particles: [],
@@ -121,7 +121,7 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
       return;
     }
     if (gameState === 'playing') {
-      gameRef.current.vy = -6.0;
+      gameRef.current.vy = -6.4;
       flappyAudio.playFlap();
     }
   }, [gameState, startGame]);
@@ -253,14 +253,14 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
 
       // 2. Game Logic & Tree Spawning
       if (gameState === 'playing') {
-        // Update flight distance remaining (tuned for 3.3 speed)
-        game.distanceRemaining = Math.max(0, game.distanceRemaining - game.speed * dt * 5.0);
+        // Update flight distance remaining (tuned for 4.0 speed)
+        game.distanceRemaining = Math.max(0, game.distanceRemaining - game.speed * dt * 4.4);
         setDistanceRemaining(Math.round(game.distanceRemaining));
 
-        // Spawn trees while distance > 35 FT (doubled spacing between trees)
+        // Spawn trees while distance > 35 FT (maintains doubled spatial distance at speed 4.0)
         if (game.distanceRemaining > 35) {
           treeSpawnTimer += dt;
-          if (treeSpawnTimer > 3.2) {
+          if (treeSpawnTimer > 2.65) {
             treeSpawnTimer = 0;
             const gap = 215; // Generous vertical flight window
             const minHeight = 50;
@@ -286,10 +286,10 @@ export const FlappyDiscGame: React.FC<FlappyDiscGameProps> = ({ onClose }) => {
           };
         }
 
-        // Disc Physics (Snappy Responsive Flight Dynamics)
-        game.vy = Math.min(8.0, game.vy + 0.32); // responsive gravity
+        // Disc Physics (Snappy & Fast Dynamics at Speed 4.0)
+        game.vy = Math.min(8.5, game.vy + 0.35); // responsive gravity
         game.discY += game.vy;
-        game.spin += 0.4;
+        game.spin += 0.45;
         // Tilt nose up when climbing, nose down when diving
         game.angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, game.vy * 0.08));
 
